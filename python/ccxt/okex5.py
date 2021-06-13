@@ -194,7 +194,7 @@ class okex5(Exchange):
                     'maker': 0.0002,
                 },
                 'swap': {
-                    'taker': 0.00075,
+                    'taker': 0.00050,
                     'maker': 0.00020,
                 },
             },
@@ -382,7 +382,7 @@ class okex5(Exchange):
                     '51600': ExchangeError,  # Status not found
                     '51601': ExchangeError,  # Order status and order ID cannot exist at the same time
                     '51602': ExchangeError,  # Either order status or order ID is required
-                    '51603': ExchangeError,  # Order does not exist
+                    '51603': OrderNotFound,  # Order does not exist
                     # Data class
                     '52000': ExchangeError,  # No updates
                     # SPOT/MARGIN error codes 54000-54999
@@ -835,8 +835,8 @@ class okex5(Exchange):
         symbol = market['symbol']
         last = self.safe_number(ticker, 'last')
         open = self.safe_number(ticker, 'open24h')
-        baseVolume = self.safe_number(ticker, 'volCcy24h')
-        quoteVolume = self.safe_number(ticker, 'vol24h')
+        quoteVolume = self.safe_number(ticker, 'volCcy24h')
+        baseVolume = self.safe_number(ticker, 'vol24h')
         vwap = self.vwap(baseVolume, quoteVolume)
         return {
             'symbol': symbol,

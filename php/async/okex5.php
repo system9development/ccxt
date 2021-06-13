@@ -179,7 +179,7 @@ class okex5 extends Exchange {
                     'maker' => 0.0002,
                 ),
                 'swap' => array(
-                    'taker' => 0.00075,
+                    'taker' => 0.00050,
                     'maker' => 0.00020,
                 ),
             ),
@@ -367,7 +367,7 @@ class okex5 extends Exchange {
                     '51600' => '\\ccxt\\ExchangeError', // Status not found
                     '51601' => '\\ccxt\\ExchangeError', // Order status and order ID cannot exist at the same time
                     '51602' => '\\ccxt\\ExchangeError', // Either order status or order ID is required
-                    '51603' => '\\ccxt\\ExchangeError', // Order does not exist
+                    '51603' => '\\ccxt\\OrderNotFound', // Order does not exist
                     // Data class
                     '52000' => '\\ccxt\\ExchangeError', // No updates
                     // SPOT/MARGIN error codes 54000-54999
@@ -840,8 +840,8 @@ class okex5 extends Exchange {
         $symbol = $market['symbol'];
         $last = $this->safe_number($ticker, 'last');
         $open = $this->safe_number($ticker, 'open24h');
-        $baseVolume = $this->safe_number($ticker, 'volCcy24h');
-        $quoteVolume = $this->safe_number($ticker, 'vol24h');
+        $quoteVolume = $this->safe_number($ticker, 'volCcy24h');
+        $baseVolume = $this->safe_number($ticker, 'vol24h');
         $vwap = $this->vwap($baseVolume, $quoteVolume);
         return array(
             'symbol' => $symbol,

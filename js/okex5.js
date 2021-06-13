@@ -175,7 +175,7 @@ module.exports = class okex5 extends Exchange {
                     'maker': 0.0002,
                 },
                 'swap': {
-                    'taker': 0.00075,
+                    'taker': 0.00050,
                     'maker': 0.00020,
                 },
             },
@@ -363,7 +363,7 @@ module.exports = class okex5 extends Exchange {
                     '51600': ExchangeError, // Status not found
                     '51601': ExchangeError, // Order status and order ID cannot exist at the same time
                     '51602': ExchangeError, // Either order status or order ID is required
-                    '51603': ExchangeError, // Order does not exist
+                    '51603': OrderNotFound, // Order does not exist
                     // Data class
                     '52000': ExchangeError, // No updates
                     // SPOT/MARGIN error codes 54000-54999
@@ -836,8 +836,8 @@ module.exports = class okex5 extends Exchange {
         const symbol = market['symbol'];
         const last = this.safeNumber (ticker, 'last');
         const open = this.safeNumber (ticker, 'open24h');
-        const baseVolume = this.safeNumber (ticker, 'volCcy24h');
-        const quoteVolume = this.safeNumber (ticker, 'vol24h');
+        const quoteVolume = this.safeNumber (ticker, 'volCcy24h');
+        const baseVolume = this.safeNumber (ticker, 'vol24h');
         const vwap = this.vwap (baseVolume, quoteVolume);
         return {
             'symbol': symbol,
