@@ -46,7 +46,7 @@ class bitrue(Exchange):
                 'fetchOrder': True,
                 'fetchOrders': True,
                 'fetchOpenOrders': True,
-                'fetchClosedOrders': True,
+                'fetchClosedOrders': False,
                 'fetchBalance': True,
                 'createMarketOrder': True,
                 'createOrder': True,
@@ -195,14 +195,7 @@ class bitrue(Exchange):
     async def fetch_tickers(self, symbols=None, params={}):
         await self.load_markets()
         response = await self.publicGetTicker24hr(params)
-        # data = self.safe_value(response, 0, [])
         return self.parse_tickers(response, symbols)
-
-    def parse_tickers(self, rawTickers, symbols=None):
-        tickers = []
-        for i in range(0, len(rawTickers)):
-            tickers.append(self.parse_ticker(rawTickers[i]))
-        return self.filter_by_array(tickers, 'symbol', symbols)
 
     def parse_ticker(self, ticker, market=None):
         symbol = None
@@ -303,13 +296,18 @@ class bitrue(Exchange):
 
     async def fetch_time(self, params={}):
         response = await self.publicGetTime(params)
-        return self.safe_integer(response, 'serverTime')
+        serverMillis = self.safe_integer(response, 'serverTime')
+        localMillis = self.milliseconds()
+        self.diffMillis = serverMillis - localMillis
+        return serverMillis
 
     async def fetch_balance(self, params={}):
         await self.load_markets()
         response = await self.privateGetAccount(params)
         balances = self.safe_value(response, 'balances')
-        result = {'info': response}
+        result = {
+            'info': response,
+        }
         for i in range(0, len(balances)):
             balance = balances[i]
             currencyId = self.safe_value(balance, 'asset')
@@ -318,32 +316,140 @@ class bitrue(Exchange):
             account['free'] = self.safe_float(balance, 'free')
             account['used'] = self.safe_float(balance, 'locked')
             result[code] = account
-        return self.parse_balance(result)
+        return self.parse_balance(result, True)
+
+    async def create_order(self, symbol, type, side, amount, price=None, params={}):
+        await self.load_markets()
+        market = self.market(symbol)
+        request = {
+            'symbol': market['id'],
+            'side': side.upper(),
+            'type': type.upper(),
+            'quantity': self.amount_to_precision(symbol, amount),
+        }
+        if type.upper() == 'LIMIT':
+            request['price'] = self.price_to_precision(symbol, price)
+        response = await self.privatePostOrder(self.extend(request, params))
+        # Note: Bitrue's API response for order creation does not include information such as type and side
+        return self.parse_order(response, market)
+
+    async def fetch_order(self, id, symbol=None, params={}):
+        if symbol is None:
+            raise ArgumentsRequired(self.id + ' fetchOrder() requires a symbol argument')
+        await self.load_markets()
+        market = self.market(symbol)
+        request = {
+            'orderId': id,
+            'symbol': market['id'],
+        }
+        response = await self.privateGetOrder(self.extend(request, params))
+        orderId = self.safe_string(response, 'orderId')
+        if orderId is None:
+            raise OrderNotFound(self.id + ' could not find matching order')
+        return self.parse_order(response, market)
+
+    async def fetch_open_orders(self, symbol=None, since=None, limit=None, params={}):
+        if symbol is None:
+            raise ArgumentsRequired(self.id + ' fetchOpenOrders() requires a symbol argument')
+        await self.load_markets()
+        market = self.market(symbol)
+        request = {
+            'symbol': market['id'],
+        }
+        if limit is not None:
+            request['limit'] = limit
+        if since is not None:
+            request['startTime'] = since
+        response = await self.privateGetOpenOrders(self.extend(request, params))
+        orders = response if isinstance(response, list) else []
+        return self.parse_orders(orders, market)
+
+    async def fetch_orders(self, symbol=None, since=None, limit=None, params={}):
+        if symbol is None:
+            raise ArgumentsRequired(self.id + ' fetchOrders() requires a symbol argument')
+        await self.load_markets()
+        market = self.market(symbol)
+        request = {
+            'symbol': market['id'],
+        }
+        if limit is not None:
+            request['limit'] = limit
+        if since is not None:
+            request['startTime'] = since
+        response = await self.privateGetAllOrders(self.extend(request, params))
+        orders = response if isinstance(response, list) else []
+        return self.parse_orders(orders, market)
+
+    def parse_order(self, order, market=None):
+        status = self.parse_order_status(self.safe_value(order, 'status'))
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
+        else:
+            market = self.marketsById[self.safe_string(order, 'symbol').lower()]
+        timestamp = None
+        if 'time' in order:
+            timestamp = self.safe_integer(order, 'time')
+        elif 'updateTime' in order:
+            timestamp = self.safe_integer(order, 'updateTime')
+        elif 'transactTime' in order:
+            timestamp = self.safe_integer(order, 'transactTime')
+        executedQty = self.safe_float(order, 'executedQty')
+        cummulativeQuoteQty = self.safe_float(order, 'cummulativeQuoteQty')
+        average = None
+        if executedQty is not None and cummulativeQuoteQty is not None:
+            average = cummulativeQuoteQty / executedQty if (executedQty > 0) else 0.0
+        amount = self.safe_float(order, 'origQty')
+        remaining = (amount - executedQty) if (amount is not None and executedQty is not None) else None
+        return self.safe_order({
+            'info': order,
+            'id': self.safe_string(order, 'orderId'),
+            'clientOrderId': self.safe_string(order, 'clientOrderId'),
+            'timestamp': timestamp,
+            'datetime': self.iso8601(timestamp),
+            'symbol': symbol,
+            'type': self.safe_string_lower(order, 'type'),
+            'side': self.safe_string_lower(order, 'side'),
+            'price': self.safe_float(order, 'price'),
+            'amount': amount,
+            'average': average,
+            'filled': executedQty,
+            'remaining': remaining,
+            'status': status,
+            'cost': cummulativeQuoteQty,
+            'fee': None,
+            'trades': None,
+        })
+
+    def parse_order_status(self, status):
+        statuses = {
+            'NEW': 'open',
+            'PARTIALLY_FILLED': 'open',
+            'FILLED': 'closed',
+            'CANCELED': 'canceled',
+            'PENDING_CANCEL': 'canceled',
+            'REJECTED': 'failed',
+            'EXPIRED': 'expired',
+        }
+        return self.safe_string(statuses, status, status)
+
+    async def cancel_order(self, id, symbol=None, params={}):
+        if symbol is None:
+            raise ArgumentsRequired(self.id + ' cancelOrder() requires a symbol argument')
+        await self.load_markets()
+        market = self.market(symbol)
+        request = {
+            'symbol': market['id'],
+            'orderId': id,
+        }
+        response = await self.privateDeleteOrder(self.extend(request, params))
+        return self.parse_order(response)
 
     async def load_time_difference(self, params={}):
         serverTime = await self.fetch_time(params)
         after = self.milliseconds()
         self.options['timeDifference'] = after - serverTime
         return self.options['timeDifference']
-
-    async def fetch_closed_orders(self, symbol=None, start_id=None, limit=None, params={}):
-        await self.load_markets()
-        if symbol is not None:
-            market = self.market(symbol)
-        request = {}
-        if symbol is not None:
-            request['symbol'] = market['id']
-        if start_id is not None:
-            request['fromId'] = start_id
-        if limit is not None:
-            request['limit'] = limit
-        response = self.privateGetMyTrades(self.extend(request, params))
-        trades = response if isinstance(response, (list)) else []
-        result = []
-        for i in range(0, len(trades)):
-            trade = self.parse_trade(trades[i], None)
-            result.append(trade)
-        return result
 
     def sign(self, path, api='public', method='GET', params={}, headers=None, body=None):
         url = self.urls['api'] + '/' + self.version + '/' + self.implode_params(path, params)
@@ -355,8 +461,6 @@ class bitrue(Exchange):
             self.check_required_credentials()
             timestamp = (self.milliseconds() - self.options['timeDifference']) if (self.options['timeDifference'] is not None) else 0
             query = self.extend({'timestamp': timestamp}, query)
-            # Does it have to be sorted?
-            # signStr = "&".join(["%s=%s" %(key, query[key]) for key in sorted(query.keys())])
             signStr = self.urlencode(query)
             signature = self.hmac(self.encode(signStr), self.encode(self.secret))
             query = self.extend({'signature': signature}, query)
