@@ -38,6 +38,7 @@ class bitrue(Exchange):
                 'fetchOrderBook': True,
                 'fetchOrderBooks': False,
                 'fetchTrades': True,
+                'fetchMyTrades': True,
                 'fetchTradingLimits': False,
                 'fetchTradingFees': False,
                 'fetchAllTradingFees': False,
@@ -259,6 +260,20 @@ class bitrue(Exchange):
         if limit is not None:
             request['limit'] = limit
         response = await self.publicGetTrades(self.extend(request, params))
+        data = response if isinstance(response, list) else []
+        return self.parse_trades(data, market, since, limit)
+
+    async def fetch_my_trades(self, symbol=None, since=None, limit=None, params={}):
+        await self.load_markets()
+        request = {}
+        market = self.market(symbol) if symbol else None
+        if symbol is not None:
+            request['symbol'] = market['id']
+        if limit is not None:
+            request['limit'] = limit
+        if since is not None:
+            request['startTime'] = since
+        response = await self.privateGetMyTrades(self.extend(request, params))
         data = response if isinstance(response, list) else []
         return self.parse_trades(data, market, since, limit)
 
