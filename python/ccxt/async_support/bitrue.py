@@ -493,9 +493,9 @@ class bitrue(Exchange):
         if response is None:
             return
         errorCode = self.safe_string(response, 'code')
-        message = self.safe_string(response, 'message')
+        message = self.safe_string(response, 'msg')
         if (errorCode is not None) and (errorCode != '0'):
             feedback = self.id + ' ' + body
             self.throw_exactly_matched_exception(self.exceptions['codes'], errorCode, feedback)
             self.throw_exactly_matched_exception(self.exceptions['exact'], message, feedback)
-            raise ExchangeError(response)
+            raise ExchangeError(message)
