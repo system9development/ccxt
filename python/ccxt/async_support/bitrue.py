@@ -396,12 +396,12 @@ class bitrue(Exchange):
         return self.parse_orders(orders, market)
 
     def parse_order(self, order, market=None):
-        status = self.parse_order_status(self.safe_value(order, 'status'))
+        status = self.parse_order_status(self.safe_string(order, 'status'))
         symbol = None
         if market is not None:
             symbol = market['symbol']
         else:
-            market = self.marketsById[self.safe_string(order, 'symbol').lower()]
+            symbol = self.safe_symbol(self.safe_string(order, 'symbol'))
         timestamp = None
         if 'time' in order:
             timestamp = self.safe_integer(order, 'time')
