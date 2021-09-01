@@ -3,7 +3,7 @@
 // ----------------------------------------------------------------------------
 const logger = require('../../../../src/logger/serv_logger.ts');
 const functions = require('./functions')
-const logger = logger.logger(__filename);
+const req_logger = logger.logger(__filename);
 
 const {
     isNode
