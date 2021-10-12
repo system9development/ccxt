@@ -33,14 +33,14 @@ class bitbns(Exchange):
                 'fetchDeposits': True,
                 'fetchMarkets': True,
                 'fetchMyTrades': True,
-                'fetchOHLCV': False,
+                'fetchOHLCV': None,
                 'fetchOpenOrders': True,
                 'fetchOrder': True,
                 'fetchOrderBook': True,
                 'fetchStatus': True,
                 'fetchTicker': 'emulated',
                 'fetchTickers': True,
-                'fetchTrades': False,
+                'fetchTrades': None,
                 'fetchWithdrawals': True,
             },
             'timeframes': {
@@ -190,6 +190,7 @@ class bitbns(Exchange):
             priceLimits = self.safe_value(marketLimits, 'price', {})
             costLimits = self.safe_value(marketLimits, 'cost', {})
             usdt = (quoteId == 'USDT')
+            # INR markets don't need a _INR prefix
             uppercaseId = (baseId + '_' + quoteId) if usdt else baseId
             result.append({
                 'id': id,
@@ -283,7 +284,7 @@ class bitbns(Exchange):
         marketId = self.safe_string(ticker, 'symbol')
         symbol = self.safe_symbol(marketId, market)
         last = self.safe_number(ticker, 'last')
-        return {
+        return self.safe_ticker({
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
@@ -304,7 +305,7 @@ class bitbns(Exchange):
             'baseVolume': self.safe_number(ticker, 'baseVolume'),
             'quoteVolume': self.safe_number(ticker, 'quoteVolume'),
             'info': ticker,
-        }
+        }, market)
 
     async def fetch_tickers(self, symbols=None, params={}):
         await self.load_markets()
@@ -492,7 +493,7 @@ class bitbns(Exchange):
         market = self.market(symbol)
         request = {
             'side': side.upper(),
-            'symbol': market['baseId'] + '_' + market['quoteId'],
+            'symbol': market['uppercaseId'],
             'quantity': self.amount_to_precision(symbol, amount),
             'rate': self.price_to_precision(symbol, price),
             # 'target_rate': self.price_to_precision(symbol, targetRate),

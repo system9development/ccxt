@@ -22,14 +22,14 @@ class zaif(Exchange):
             'version': '1',
             'has': {
                 'cancelOrder': True,
-                'CORS': False,
-                'createMarketOrder': False,
+                'CORS': None,
+                'createMarketOrder': None,
                 'createOrder': True,
                 'fetchBalance': True,
                 'fetchClosedOrders': True,
                 'fetchMarkets': True,
-                'fetchOrderBook': True,
                 'fetchOpenOrders': True,
+                'fetchOrderBook': True,
                 'fetchTicker': True,
                 'fetchTrades': True,
                 'withdraw': True,
@@ -406,6 +406,7 @@ class zaif(Exchange):
         return self.parse_orders(response['return'], market, since, limit)
 
     async def withdraw(self, code, amount, address, tag=None, params={}):
+        tag, params = self.handle_withdraw_tag_and_params(tag, params)
         self.check_address(address)
         await self.load_markets()
         currency = self.currency(code)

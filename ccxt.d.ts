@@ -212,7 +212,7 @@ declare module 'ccxt' {
     export type OHLCV = [number, number, number, number, number, number];
 
     /** Request parameters */
-    type Params = Dictionary<string | number | boolean>;
+    type Params = Dictionary<string | number | boolean | string[]>;
 
     export class Exchange {
         constructor(config?: {[key in keyof Exchange]?: Exchange[key]});
@@ -457,7 +457,6 @@ declare module 'ccxt' {
     export class bitvavo extends Exchange {}
     export class bitz extends Exchange {}
     export class bl3p extends Exchange {}
-    export class braziliex extends Exchange {}
     export class btcalpha extends Exchange {}
     export class btcbox extends Exchange {}
     export class btcmarkets extends Exchange {}
@@ -466,6 +465,7 @@ declare module 'ccxt' {
     export class buda extends Exchange {}
     export class bw extends Exchange {}
     export class bybit extends Exchange {}
+    export class bytetrade extends Exchange {}
     export class cdax extends huobipro {}
     export class cex extends Exchange {}
     export class coinbase extends Exchange {}
@@ -475,7 +475,6 @@ declare module 'ccxt' {
     export class coinegg extends Exchange {}
     export class coinex extends Exchange {}
     export class coinfalcon extends Exchange {}
-    export class coinfloor extends Exchange {}
     export class coinmarketcap extends Exchange {}
     export class coinmate extends Exchange {}
     export class coinone extends Exchange {}
@@ -493,8 +492,6 @@ declare module 'ccxt' {
     export class ftx extends Exchange {}
     export class gateio extends Exchange {}
     export class gemini extends Exchange {}
-    export class gopax extends Exchange {}
-    export class hbtc extends Exchange {}
     export class hitbtc extends Exchange {}
     export class hollaex extends Exchange {}
     export class huobi extends Exchange {}
@@ -576,7 +573,6 @@ declare module 'ccxt' {
         | 'bitvavo'
         | 'bitz'
         | 'bl3p'
-        | 'braziliex'
         | 'btcalpha'
         | 'btcbox'
         | 'btcmarkets'
@@ -585,6 +581,7 @@ declare module 'ccxt' {
         | 'buda'
         | 'bw'
         | 'bybit'
+        | 'bytetrade'
         | 'cdax'
         | 'cex'
         | 'coinbase'
@@ -594,7 +591,6 @@ declare module 'ccxt' {
         | 'coinegg'
         | 'coinex'
         | 'coinfalcon'
-        | 'coinfloor'
         | 'coinmarketcap'
         | 'coinmate'
         | 'coinone'
@@ -612,8 +608,6 @@ declare module 'ccxt' {
         | 'ftx'
         | 'gateio'
         | 'gemini'
-        | 'gopax'
-        | 'hbtc'
         | 'hitbtc'
         | 'hollaex'
         | 'huobi'

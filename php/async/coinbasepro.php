@@ -19,7 +19,7 @@ class coinbasepro extends Exchange {
             'id' => 'coinbasepro',
             'name' => 'Coinbase Pro',
             'countries' => array( 'US' ),
-            'rateLimit' => 1000,
+            'rateLimit' => 100,
             'userAgent' => $this->userAgents['chrome'],
             'pro' => true,
             'has' => array(
@@ -31,9 +31,10 @@ class coinbasepro extends Exchange {
                 'deposit' => true,
                 'fetchAccounts' => true,
                 'fetchBalance' => true,
-                'fetchCurrencies' => true,
                 'fetchClosedOrders' => true,
-                'fetchDepositAddress' => false, // the exchange does not have this method, only createDepositAddress, see https://github.com/ccxt/ccxt/pull/7405
+                'fetchCurrencies' => true,
+                'fetchDepositAddress' => null, // the exchange does not have this method, only createDepositAddress, see https://github.com/ccxt/ccxt/pull/7405
+                'fetchDeposits' => true,
                 'fetchMarkets' => true,
                 'fetchMyTrades' => true,
                 'fetchOHLCV' => true,
@@ -42,13 +43,12 @@ class coinbasepro extends Exchange {
                 'fetchOrderBook' => true,
                 'fetchOrders' => true,
                 'fetchOrderTrades' => true,
-                'fetchTime' => true,
                 'fetchTicker' => true,
+                'fetchTime' => true,
                 'fetchTrades' => true,
                 'fetchTransactions' => true,
-                'withdraw' => true,
-                'fetchDeposits' => true,
                 'fetchWithdrawals' => true,
+                'withdraw' => true,
             ),
             'timeframes' => array(
                 '1m' => 60,
@@ -981,6 +981,7 @@ class coinbasepro extends Exchange {
     }
 
     public function withdraw($code, $amount, $address, $tag = null, $params = array ()) {
+        list($tag, $params) = $this->handle_withdraw_tag_and_params($tag, $params);
         $this->check_address($address);
         yield $this->load_markets();
         $currency = $this->currency($code);
@@ -1196,8 +1197,8 @@ class coinbasepro extends Exchange {
         }
     }
 
-    public function request($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
-        $response = yield $this->fetch2($path, $api, $method, $params, $headers, $body);
+    public function request($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null, $config = array (), $context = array ()) {
+        $response = yield $this->fetch2($path, $api, $method, $params, $headers, $body, $config, $context);
         if (gettype($response) !== 'string') {
             if (is_array($response) && array_key_exists('message', $response)) {
                 throw new ExchangeError($this->id . ' ' . $this->json($response));

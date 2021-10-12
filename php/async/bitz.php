@@ -23,11 +23,11 @@ class bitz extends Exchange {
             'has' => array(
                 'cancelOrder' => true,
                 'cancelOrders' => true,
+                'createMarketOrder' => null,
                 'createOrder' => true,
-                'createMarketOrder' => false,
                 'fetchBalance' => true,
-                'fetchDeposits' => true,
                 'fetchClosedOrders' => true,
+                'fetchDeposits' => true,
                 'fetchMarkets' => true,
                 'fetchOHLCV' => true,
                 'fetchOpenOrders' => true,
@@ -38,7 +38,7 @@ class bitz extends Exchange {
                 'fetchTickers' => true,
                 'fetchTime' => true,
                 'fetchTrades' => true,
-                'fetchTransactions' => false,
+                'fetchTransactions' => null,
                 'fetchWithdrawals' => true,
                 'withdraw' => true,
             ),
@@ -145,6 +145,7 @@ class bitz extends Exchange {
                 // https://github.com/ccxt/ccxt/issues/3881
                 // https://support.bit-z.pro/hc/en-us/articles/360007500654-BOX-BOX-Token-
                 'BOX' => 'BOX Token',
+                'XBT' => 'XBT',
                 'LEO' => 'LeoCoin',
                 'XRB' => 'NANO',
                 'PXC' => 'Pixiecoin',
@@ -1165,6 +1166,7 @@ class bitz extends Exchange {
     }
 
     public function withdraw($code, $amount, $address, $tag = null, $params = array ()) {
+        list($tag, $params) = $this->handle_withdraw_tag_and_params($tag, $params);
         $this->check_address($address);
         yield $this->load_markets();
         $currency = $this->currency($code);

@@ -11,8 +11,8 @@ module.exports = class gateio extends Exchange {
         return this.deepExtend (super.describe (), {
             'id': 'gateio',
             'name': 'Gate.io',
-            'country': [ 'KR' ],
-            'rateLimit': 1000,
+            'countries': [ 'KR' ],
+            'rateLimit': 10 / 3, // 300 requests per second or 3.33ms
             'version': '4',
             'certified': true,
             'pro': true,
@@ -31,18 +31,24 @@ module.exports = class gateio extends Exchange {
             },
             'has': {
                 'cancelOrder': true,
+                'createMarketOrder': false,
                 'createOrder': true,
                 'fetchBalance': true,
                 'fetchClosedOrders': true,
                 'fetchCurrencies': true,
                 'fetchDeposits': true,
+                'fetchFundingRateHistory': true,
+                'fetchIndexOHLCV': true,
                 'fetchMarkets': true,
+                'fetchMarkOHLCV': true,
                 'fetchMyTrades': true,
                 'fetchOHLCV': true,
                 'fetchOpenOrders': true,
                 'fetchOrder': true,
+                'fetchPremiumIndexOHLCV': false,
                 'fetchTicker': true,
                 'fetchTickers': true,
+                'fetchTime': false,
                 'fetchTrades': true,
                 'fetchWithdrawals': true,
                 'transfer': true,
@@ -51,191 +57,191 @@ module.exports = class gateio extends Exchange {
             'api': {
                 'public': {
                     'spot': {
-                        'get': [
-                            'currencies',
-                            'currencies/{currency}',
-                            'currency_pairs',
-                            'currency_pairs/{currency_pair}',
-                            'tickers',
-                            'order_book',
-                            'trades',
-                            'candlesticks',
-                        ],
+                        'get': {
+                            'currencies': 1,
+                            'currencies/{currency}': 1,
+                            'currency_pairs': 1,
+                            'currency_pairs/{currency_pair}': 1,
+                            'tickers': 1,
+                            'order_book': 1,
+                            'trades': 1,
+                            'candlesticks': 1,
+                        },
                     },
                     'margin': {
-                        'get': [
-                            'currency_pairs',
-                            'currency_pairs/{currency_pair}',
-                            'cross/currencies',
-                            'cross/currencies/{currency}',
-                        ],
+                        'get': {
+                            'currency_pairs': 1,
+                            'currency_pairs/{currency_pair}': 1,
+                            'cross/currencies': 1,
+                            'cross/currencies/{currency}': 1,
+                        },
                     },
                     'futures': {
-                        'get': [
-                            '{settle}/contracts',
-                            '{settle}/contracts/{contract}',
-                            '{settle}/order_book',
-                            '{settle}/trades',
-                            '{settle}/candlesticks',
-                            '{settle}/tickers',
-                            '{settle}/funding_rate',
-                            '{settle}/insurance',
-                            '{settle}/contract_stats',
-                            '{settle}/liq_orders',
-                        ],
+                        'get': {
+                            '{settle}/contracts': 1.5,
+                            '{settle}/contracts/{contract}': 1.5,
+                            '{settle}/order_book': 1.5,
+                            '{settle}/trades': 1.5,
+                            '{settle}/candlesticks': 1.5,
+                            '{settle}/tickers': 1.5,
+                            '{settle}/funding_rate': 1.5,
+                            '{settle}/insurance': 1.5,
+                            '{settle}/contract_stats': 1.5,
+                            '{settle}/liq_orders': 1.5,
+                        },
                     },
                     'delivery': {
-                        'get': [
-                            '{settle}/contracts',
-                            '{settle}/contracts/{contract}',
-                            '{settle}/order_book',
-                            '{settle}/trades',
-                            '{settle}/candlesticks',
-                            '{settle}/tickers',
-                            '{settle}/insurance',
-                        ],
+                        'get': {
+                            '{settle}/contracts': 1.5,
+                            '{settle}/contracts/{contract}': 1.5,
+                            '{settle}/order_book': 1.5,
+                            '{settle}/trades': 1.5,
+                            '{settle}/candlesticks': 1.5,
+                            '{settle}/tickers': 1.5,
+                            '{settle}/insurance': 1.5,
+                        },
                     },
                 },
                 'private': {
                     'withdrawals': {
-                        'post': [
-                            '', // /withdrawals
-                        ],
-                        'delete': [
-                            '{withdrawal_id}',
-                        ],
+                        'post': {
+                            '': 3000, // 3000 = 10 seconds
+                        },
+                        'delete': {
+                            '{withdrawal_id}': 300,
+                        },
                     },
                     'wallet': {
-                        'get': [
-                            'deposit_address',
-                            'withdrawals',
-                            'deposits',
-                            'sub_account_transfers',
-                            'withdraw_status',
-                            'sub_account_balances',
-                            'fee',
-                        ],
-                        'post': [
-                            'transfers',
-                            'sub_account_transfers',
-                        ],
+                        'get': {
+                            'deposit_address': 300,
+                            'withdrawals': 300,
+                            'deposits': 300,
+                            'sub_account_transfers': 300,
+                            'withdraw_status': 300,
+                            'sub_account_balances': 300,
+                            'fee': 300,
+                        },
+                        'post': {
+                            'transfers': 300,
+                            'sub_account_transfers': 300,
+                        },
                     },
                     'spot': {
-                        'get': [
-                            'accounts',
-                            'open_orders',
-                            'orders',
-                            'orders/{order_id}',
-                            'my_trades',
-                            'price_orders',
-                            'price_orders/{order_id}',
-                        ],
-                        'post': [
-                            'batch_orders',
-                            'orders',
-                            'cancel_batch_orders',
-                            'price_orders',
-                        ],
-                        'delete': [
-                            'orders',
-                            'orders/{order_id}',
-                            'price_orders',
-                            'price_orders/{order_id}',
-                        ],
+                        'get': {
+                            'accounts': 1,
+                            'open_orders': 1,
+                            'orders': 1,
+                            'orders/{order_id}': 1,
+                            'my_trades': 1,
+                            'price_orders': 1,
+                            'price_orders/{order_id}': 1,
+                        },
+                        'post': {
+                            'batch_orders': 1,
+                            'orders': 1,
+                            'cancel_batch_orders': 1,
+                            'price_orders': 1,
+                        },
+                        'delete': {
+                            'orders': 1,
+                            'orders/{order_id}': 1,
+                            'price_orders': 1,
+                            'price_orders/{order_id}': 1,
+                        },
                     },
                     'margin': {
-                        'get': [
-                            'account_book',
-                            'funding_accounts',
-                            'loans',
-                            'loans/{loan_id}',
-                            'loans/{loan_id}/repayment',
-                            'loan_records',
-                            'loan_records/{load_record_id}',
-                            'auto_repay',
-                            'transferable',
-                            'cross/accounts',
-                            'cross/account_book',
-                            'cross/loans',
-                            'cross/loans/{loan_id}',
-                            'cross/loans/repayments',
-                            'cross/transferable',
-                        ],
-                        'post': [
-                            'loans',
-                            'merged_loans',
-                            'loans/{loan_id}/repayment',
-                            'auto_repay',
-                            'cross/loans',
-                            'cross/loans/repayments',
-                        ],
-                        'patch': [
-                            'loans/{loan_id}',
-                            'loan_records/{loan_record_id}',
-                        ],
-                        'delete': [
-                            'loans/{loan_id}',
-                        ],
+                        'get': {
+                            'account_book': 1.5,
+                            'funding_accounts': 1.5,
+                            'loans': 1.5,
+                            'loans/{loan_id}': 1.5,
+                            'loans/{loan_id}/repayment': 1.5,
+                            'loan_records': 1.5,
+                            'loan_records/{load_record_id}': 1.5,
+                            'auto_repay': 1.5,
+                            'transferable': 1.5,
+                            'cross/accounts': 1.5,
+                            'cross/account_book': 1.5,
+                            'cross/loans': 1.5,
+                            'cross/loans/{loan_id}': 1.5,
+                            'cross/loans/repayments': 1.5,
+                            'cross/transferable': 1.5,
+                        },
+                        'post': {
+                            'loans': 1.5,
+                            'merged_loans': 1.5,
+                            'loans/{loan_id}/repayment': 1.5,
+                            'auto_repay': 1.5,
+                            'cross/loans': 1.5,
+                            'cross/loans/repayments': 1.5,
+                        },
+                        'patch': {
+                            'loans/{loan_id}': 1.5,
+                            'loan_records/{loan_record_id}': 1.5,
+                        },
+                        'delete': {
+                            'loans/{loan_id}': 1.5,
+                        },
                     },
                     'futures': {
-                        'get': [
-                            '{settle}/accounts',
-                            '{settle}/account_book',
-                            '{settle}/positions',
-                            '{settle}/positions/{contract}',
-                            '{settle}/orders',
-                            '{settle}/orders/{order_id}',
-                            '{settle}/my_trades',
-                            '{settle}/position_close',
-                            '{settle}/liquidates',
-                            '{settle}/price_orders',
-                            '{settle}/price_orders/{order_id}',
-                        ],
-                        'post': [
-                            '{settle}/positions/{contract}/margin',
-                            '{settle}/positions/{contract}/leverage',
-                            '{settle}/positions/{contract}/risk_limit',
-                            '{settle}/dual_mode',
-                            '{settle}/dual_comp/positions/{contract}',
-                            '{settle}/dual_comp/positions/{contract}/margin',
-                            '{settle}/dual_comp/positions/{contract}/leverage',
-                            '{settle}/dual_comp/positions/{contract}/risk_limit',
-                            '{settle}/orders',
-                            '{settle}/price_orders',
-                        ],
-                        'delete': [
-                            '{settle}/orders',
-                            '{settle}/orders/{order_id}',
-                            '{settle}/price_orders',
-                            '{settle}/price_orders/{order_id}',
-                        ],
+                        'get': {
+                            '{settle}/accounts': 1.5,
+                            '{settle}/account_book': 1.5,
+                            '{settle}/positions': 1.5,
+                            '{settle}/positions/{contract}': 1.5,
+                            '{settle}/orders': 1.5,
+                            '{settle}/orders/{order_id}': 1.5,
+                            '{settle}/my_trades': 1.5,
+                            '{settle}/position_close': 1.5,
+                            '{settle}/liquidates': 1.5,
+                            '{settle}/price_orders': 1.5,
+                            '{settle}/price_orders/{order_id}': 1.5,
+                        },
+                        'post': {
+                            '{settle}/positions/{contract}/margin': 1.5,
+                            '{settle}/positions/{contract}/leverage': 1.5,
+                            '{settle}/positions/{contract}/risk_limit': 1.5,
+                            '{settle}/dual_mode': 1.5,
+                            '{settle}/dual_comp/positions/{contract}': 1.5,
+                            '{settle}/dual_comp/positions/{contract}/margin': 1.5,
+                            '{settle}/dual_comp/positions/{contract}/leverage': 1.5,
+                            '{settle}/dual_comp/positions/{contract}/risk_limit': 1.5,
+                            '{settle}/orders': 1.5,
+                            '{settle}/price_orders': 1.5,
+                        },
+                        'delete': {
+                            '{settle}/orders': 1.5,
+                            '{settle}/orders/{order_id}': 1.5,
+                            '{settle}/price_orders': 1.5,
+                            '{settle}/price_orders/{order_id}': 1.5,
+                        },
                     },
                     'delivery': {
-                        'get': [
-                            '{settle}/accounts',
-                            '{settle}/account_book',
-                            '{settle}/positions',
-                            '{settle}/positions/{contract}',
-                            '{settle}/orders',
-                            '{settle}/orders/{order_id}',
-                            '{settle}/my_trades',
-                            '{settle}/position_close',
-                            '{settle}/liquidates',
-                            '{settle}/price_orders',
-                            '{settle}/price_orders/{order_id}',
-                        ],
-                        'post': [
-                            '{settle}/positions/{contract}/margin',
-                            '{settle}/positions/{contract}/leverage',
-                            '{settle}/positions/{contract}/risk_limit',
-                            '{settle}/orders',
-                        ],
-                        'delete': [
-                            '{settle}/orders',
-                            '{settle}/orders/{order_id}',
-                            '{settle}/price_orders',
-                            '{settle}/price_orders/{order_id}',
-                        ],
+                        'get': {
+                            '{settle}/accounts': 1.5,
+                            '{settle}/account_book': 1.5,
+                            '{settle}/positions': 1.5,
+                            '{settle}/positions/{contract}': 1.5,
+                            '{settle}/orders': 1.5,
+                            '{settle}/orders/{order_id}': 1.5,
+                            '{settle}/my_trades': 1.5,
+                            '{settle}/position_close': 1.5,
+                            '{settle}/liquidates': 1.5,
+                            '{settle}/price_orders': 1.5,
+                            '{settle}/price_orders/{order_id}': 1.5,
+                        },
+                        'post': {
+                            '{settle}/positions/{contract}/margin': 1.5,
+                            '{settle}/positions/{contract}/leverage': 1.5,
+                            '{settle}/positions/{contract}/risk_limit': 1.5,
+                            '{settle}/orders': 1.5,
+                        },
+                        'delete': {
+                            '{settle}/orders': 1.5,
+                            '{settle}/orders/{order_id}': 1.5,
+                            '{settle}/price_orders': 1.5,
+                            '{settle}/price_orders/{order_id}': 1.5,
+                        },
                     },
                 },
             },
@@ -267,9 +273,15 @@ module.exports = class gateio extends Exchange {
                 'RAI': 'Rai Reflex Index', // conflict with RAI Finance
                 'SBTC': 'Super Bitcoin',
                 'TNC': 'Trinity Network Credit',
+                'TON': 'TONToken',
                 'VAI': 'VAIOT',
             },
             'options': {
+                'networks': {
+                    'TRC20': 'TRX',
+                    'ERC20': 'ETH',
+                    'BEP20': 'BSC',
+                },
                 'accountsByType': {
                     'spot': 'spot',
                     'margin': 'margin',
@@ -518,10 +530,7 @@ module.exports = class gateio extends Exchange {
                 'id': currencyId,
                 'name': undefined,
                 'code': code,
-                'precision': {
-                    'amount': amountPrecision,
-                    'price': undefined,
-                },
+                'precision': amountPrecision,
                 'info': entry,
                 'active': active,
                 'fee': undefined,
@@ -600,7 +609,7 @@ module.exports = class gateio extends Exchange {
         const addressField = this.safeString (response, 'address');
         let tag = undefined;
         let address = undefined;
-        if (addressField.indexOf (' ') > -1) {
+        if (addressField.indexOf (' ') >= 0) {
             const splitted = addressField.split (' ');
             address = splitted[0];
             tag = splitted[1];
@@ -740,7 +749,7 @@ module.exports = class gateio extends Exchange {
         const baseVolume = this.safeNumber (ticker, 'base_volume');
         const quoteVolume = this.safeNumber (ticker, 'quote_volume');
         const percentage = this.safeNumber (ticker, 'change_percentage');
-        return {
+        return this.safeTicker ({
             'symbol': symbol,
             'timestamp': undefined,
             'datetime': undefined,
@@ -761,7 +770,7 @@ module.exports = class gateio extends Exchange {
             'baseVolume': baseVolume,
             'quoteVolume': quoteVolume,
             'info': ticker,
-        };
+        }, market);
     }
 
     async fetchTickers (symbols = undefined, params = {}) {
@@ -799,8 +808,12 @@ module.exports = class gateio extends Exchange {
     async fetchOHLCV (symbol, timeframe = '1m', since = undefined, limit = undefined, params = {}) {
         await this.loadMarkets ();
         const market = this.market (symbol);
+        const price = this.safeString (params, 'price');
+        params = this.omit (params, 'price');
+        const isMark = (price === 'mark');
+        const isIndex = (price === 'index');
+        const isFuture = isMark || isIndex;
         const request = {
-            'currency_pair': market['id'],
             'interval': this.timeframes[timeframe],
         };
         if (since === undefined) {
@@ -813,12 +826,68 @@ module.exports = class gateio extends Exchange {
                 request['to'] = this.sum (request['from'], limit * this.parseTimeframe (timeframe) - 1);
             }
         }
-        const response = await this.publicSpotGetCandlesticks (this.extend (request, params));
+        let method = 'publicSpotGetCandlesticks';
+        if (isFuture) {
+            request['contract'] = market['id'];
+            method = 'publicFuturesGetSettleCandlesticks';
+            request['settle'] = market['quote'].toLowerCase ();
+            if (isMark) {
+                request['contract'] = 'mark_' + request['contract'];
+            } else if (isIndex) {
+                request['contract'] = 'index_' + request['contract'];
+            }
+        } else {
+            request['currency_pair'] = market['id'];
+        }
+        const response = await this[method] (this.extend (request, params));
         return this.parseOHLCVs (response, market, timeframe, since, limit);
     }
 
-    parseOHLCV (ohlcv, market = undefined) {
+    async fetchMarkOHLCV (symbol, timeframe = '1m', since = undefined, limit = undefined, params = {}) {
+        const request = {
+            'price': 'mark',
+        };
+        return await this.fetchOHLCV (symbol, timeframe, since, limit, this.extend (request, params));
+    }
+
+    async fetchFundingRateHistory (symbol, limit = undefined, since = undefined, params = {}) {
+        await this.loadMarkets ();
+        const market = this.market (symbol);
+        const request = {
+            'contract': market['id'],
+            'settle': market['quote'].toLowerCase (),
+        };
+        if (limit !== undefined) {
+            request['limit'] = limit;
+        }
+        const method = 'publicFuturesGetSettleFundingRate';
+        const response = await this[method] (this.extend (request, params));
         //
+        //     {
+        //         "fundingRate": "0.00063521",
+        //         "fundingTime": "1621267200000",
+        //     }
+        //
+        const rates = [];
+        for (let i = 0; i < response.length; i++) {
+            rates.push ({
+                'symbol': symbol,
+                'fundingRate': this.safeNumber (response[i], 'r'),
+                'timestamp': this.safeNumber (response[i], 't'),
+            });
+        }
+        return rates;
+    }
+
+    async fetchIndexOHLCV (symbol, timeframe = '1m', since = undefined, limit = undefined, params = {}) {
+        const request = {
+            'price': 'index',
+        };
+        return await this.fetchOHLCV (symbol, timeframe, since, limit, this.extend (request, params));
+    }
+
+    parseOHLCV (ohlcv, market = undefined) {
+        // Spot market candles
         //     [
         //       "1626163200",           // Unix timestamp in seconds
         //       "346711.933138181617",  // Trading volume
@@ -828,20 +897,35 @@ module.exports = class gateio extends Exchange {
         //       "33184.47"              // Open price
         //     ]
         //
-        const timestamp = this.safeTimestamp (ohlcv, 0);
-        const volume = this.safeNumber (ohlcv, 1);
-        const close = this.safeNumber (ohlcv, 2);
-        const high = this.safeNumber (ohlcv, 3);
-        const low = this.safeNumber (ohlcv, 4);
-        const open = this.safeNumber (ohlcv, 5);
-        return [
-            timestamp,
-            open,
-            high,
-            low,
-            close,
-            volume,
-        ];
+        // Mark and Index price candles
+        // {
+        //      "t":1632873600,         // Unix timestamp in seconds
+        //      "o":"41025",            // Open price
+        //      "h":"41882.17",         // Highest price
+        //      "c":"41776.92",         // Close price
+        //      "l":"40783.94"          // Lowest price
+        // }
+        //
+        if (Array.isArray (ohlcv)) {
+            return [
+                this.safeTimestamp (ohlcv, 0),   // unix timestamp in seconds
+                this.safeNumber (ohlcv, 5),      // open price
+                this.safeNumber (ohlcv, 3),      // highest price
+                this.safeNumber (ohlcv, 4),      // lowest price
+                this.safeNumber (ohlcv, 2),      // close price
+                this.safeNumber (ohlcv, 1),      // trading volume
+            ];
+        } else {
+            // Mark and Index price candles
+            return [
+                this.safeTimestamp (ohlcv, 't'), // unix timestamp in seconds
+                this.safeNumber (ohlcv, 'o'),    // open price
+                this.safeNumber (ohlcv, 'h'),    // highest price
+                this.safeNumber (ohlcv, 'l'),    // lowest price
+                this.safeNumber (ohlcv, 'c'),    // close price
+                0,
+            ];
+        }
     }
 
     async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
@@ -859,9 +943,19 @@ module.exports = class gateio extends Exchange {
         const market = this.market (symbol);
         const request = {
             'currency_pair': market['id'],
+            // 'limit': limit,
+            // 'page': 0,
+            // 'order_id': 'Order ID',
+            // 'account': 'spot', // default to spot and margin account if not specified, set to cross_margin to operate against margin account
+            // 'from': since, // default to 7 days before current time
+            // 'to': this.milliseconds (), // default to current time
         };
         if (limit !== undefined) {
             request['limit'] = limit; // default 100, max 1000
+        }
+        if (since !== undefined) {
+            request['from'] = Math.floor (since / 1000);
+            // request['to'] = since + 7 * 24 * 60 * 60;
         }
         const response = await this.privateSpotGetMyTrades (this.extend (request, params));
         return this.parseTrades (response, market, since, limit);
@@ -958,6 +1052,7 @@ module.exports = class gateio extends Exchange {
         }
         if (since !== undefined) {
             request['from'] = Math.floor (since / 1000);
+            request['to'] = since + 30 * 24 * 60 * 60;
         }
         const response = await this.privateWalletGetDeposits (this.extend (request, params));
         return this.parseTransactions (response, currency);
@@ -976,12 +1071,14 @@ module.exports = class gateio extends Exchange {
         }
         if (since !== undefined) {
             request['from'] = Math.floor (since / 1000);
+            request['to'] = since + 30 * 24 * 60 * 60;
         }
         const response = await this.privateWalletGetWithdrawals (this.extend (request, params));
         return this.parseTransactions (response, currency);
     }
 
     async withdraw (code, amount, address, tag = undefined, params = {}) {
+        [ tag, params ] = this.handleWithdrawTagAndParams (tag, params);
         this.checkAddress (address);
         await this.loadMarkets ();
         const currency = this.currency (code);
@@ -992,6 +1089,13 @@ module.exports = class gateio extends Exchange {
         };
         if (tag !== undefined) {
             request['memo'] = tag;
+        }
+        const networks = this.safeValue (this.options, 'networks', {});
+        let network = this.safeStringUpper (params, 'network'); // this line allows the user to specify either ERC20 or ETH
+        network = this.safeStringLower (networks, network, network); // handle ETH>ERC20 alias
+        if (network !== undefined) {
+            request['chain'] = network;
+            params = this.omit (params, 'network');
         }
         const response = await this.privateWithdrawalsPost (this.extend (request, params));
         //
@@ -1390,7 +1494,7 @@ module.exports = class gateio extends Exchange {
     handleErrors (code, reason, url, method, headers, body, response, requestHeaders, requestBody) {
         const label = this.safeString (response, 'label');
         if (label !== undefined) {
-            const message = this.safeString (response, 'message');
+            const message = this.safeString2 (response, 'message', 'detail', '');
             const Error = this.safeValue (this.exceptions, label, ExchangeError);
             throw new Error (this.id + ' ' + message);
         }

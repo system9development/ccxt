@@ -26,14 +26,14 @@ module.exports = class bitbns extends Exchange {
                 'fetchDeposits': true,
                 'fetchMarkets': true,
                 'fetchMyTrades': true,
-                'fetchOHLCV': false,
+                'fetchOHLCV': undefined,
                 'fetchOpenOrders': true,
                 'fetchOrder': true,
                 'fetchOrderBook': true,
                 'fetchStatus': true,
                 'fetchTicker': 'emulated',
                 'fetchTickers': true,
-                'fetchTrades': false,
+                'fetchTrades': undefined,
                 'fetchWithdrawals': true,
             },
             'timeframes': {
@@ -186,6 +186,7 @@ module.exports = class bitbns extends Exchange {
             const priceLimits = this.safeValue (marketLimits, 'price', {});
             const costLimits = this.safeValue (marketLimits, 'cost', {});
             const usdt = (quoteId === 'USDT');
+            // INR markets don't need a _INR prefix
             const uppercaseId = usdt ? (baseId + '_' + quoteId) : baseId;
             result.push ({
                 'id': id,
@@ -283,7 +284,7 @@ module.exports = class bitbns extends Exchange {
         const marketId = this.safeString (ticker, 'symbol');
         const symbol = this.safeSymbol (marketId, market);
         const last = this.safeNumber (ticker, 'last');
-        return {
+        return this.safeTicker ({
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
@@ -304,7 +305,7 @@ module.exports = class bitbns extends Exchange {
             'baseVolume': this.safeNumber (ticker, 'baseVolume'),
             'quoteVolume': this.safeNumber (ticker, 'quoteVolume'),
             'info': ticker,
-        };
+        }, market);
     }
 
     async fetchTickers (symbols = undefined, params = {}) {
@@ -503,7 +504,7 @@ module.exports = class bitbns extends Exchange {
         const market = this.market (symbol);
         const request = {
             'side': side.toUpperCase (),
-            'symbol': market['baseId'] + '_' + market['quoteId'],
+            'symbol': market['uppercaseId'],
             'quantity': this.amountToPrecision (symbol, amount),
             'rate': this.priceToPrecision (symbol, price),
             // 'target_rate': this.priceToPrecision (symbol, targetRate),

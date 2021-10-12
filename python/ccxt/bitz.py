@@ -31,11 +31,11 @@ class bitz(Exchange):
             'has': {
                 'cancelOrder': True,
                 'cancelOrders': True,
+                'createMarketOrder': None,
                 'createOrder': True,
-                'createMarketOrder': False,
                 'fetchBalance': True,
-                'fetchDeposits': True,
                 'fetchClosedOrders': True,
+                'fetchDeposits': True,
                 'fetchMarkets': True,
                 'fetchOHLCV': True,
                 'fetchOpenOrders': True,
@@ -46,7 +46,7 @@ class bitz(Exchange):
                 'fetchTickers': True,
                 'fetchTime': True,
                 'fetchTrades': True,
-                'fetchTransactions': False,
+                'fetchTransactions': None,
                 'fetchWithdrawals': True,
                 'withdraw': True,
             },
@@ -153,6 +153,7 @@ class bitz(Exchange):
                 # https://github.com/ccxt/ccxt/issues/3881
                 # https://support.bit-z.pro/hc/en-us/articles/360007500654-BOX-BOX-Token-
                 'BOX': 'BOX Token',
+                'XBT': 'XBT',
                 'LEO': 'LeoCoin',
                 'XRB': 'NANO',
                 'PXC': 'Pixiecoin',
@@ -1112,6 +1113,7 @@ class bitz(Exchange):
         return self.parse_transactions_by_type(type, transactions, code, since, limit)
 
     def withdraw(self, code, amount, address, tag=None, params={}):
+        tag, params = self.handle_withdraw_tag_and_params(tag, params)
         self.check_address(address)
         self.load_markets()
         currency = self.currency(code)

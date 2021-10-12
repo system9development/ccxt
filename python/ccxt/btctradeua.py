@@ -19,8 +19,8 @@ class btctradeua(Exchange):
             'rateLimit': 3000,
             'has': {
                 'cancelOrder': True,
-                'CORS': False,
-                'createMarketOrder': False,
+                'CORS': None,
+                'createMarketOrder': None,
                 'createOrder': True,
                 'fetchBalance': True,
                 'fetchOpenOrders': True,
@@ -194,7 +194,7 @@ class btctradeua(Exchange):
             'Jun': '06',
             'Jul': '07',
             'Aug': '08',
-            'Sep': '09',
+            'Sept': '09',
             'Oct': '10',
             'Nov': '11',
             'Dec': '12',
@@ -212,7 +212,7 @@ class btctradeua(Exchange):
         month = month.replace('.', '')
         month = self.convert_month_name_to_string(month)
         if not month:
-            raise ExchangeError(self.id + ' parseTrade() None month name: ' + cyrillic)
+            raise ExchangeError(self.id + ' parseTrade() unrecognized month name: ' + cyrillic)
         hms = parts[3]
         hmsParts = hms.split(':')
         h = self.safe_string(hmsParts, 0)

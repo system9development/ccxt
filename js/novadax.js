@@ -19,8 +19,8 @@ module.exports = class novadax extends Exchange {
             'version': 'v1',
             // new metainfo interface
             'has': {
-                'CORS': false,
                 'cancelOrder': true,
+                'CORS': undefined,
                 'createOrder': true,
                 'fetchAccounts': true,
                 'fetchBalance': true,
@@ -31,9 +31,9 @@ module.exports = class novadax extends Exchange {
                 'fetchOHLCV': true,
                 'fetchOpenOrders': true,
                 'fetchOrder': true,
-                'fetchOrders': true,
-                'fetchOrderTrades': true,
                 'fetchOrderBook': true,
+                'fetchOrderTrades': true,
+                'fetchOrders': true,
                 'fetchTicker': true,
                 'fetchTickers': true,
                 'fetchTime': true,
@@ -250,18 +250,10 @@ module.exports = class novadax extends Exchange {
         const symbol = this.safeSymbol (marketId, market, '_');
         const open = this.safeNumber (ticker, 'open24h');
         const last = this.safeNumber (ticker, 'lastPrice');
-        let percentage = undefined;
-        let change = undefined;
-        let average = undefined;
-        if ((last !== undefined) && (open !== undefined)) {
-            change = last - open;
-            percentage = change / open * 100;
-            average = this.sum (last, open) / 2;
-        }
         const baseVolume = this.safeNumber (ticker, 'baseVolume24h');
         const quoteVolume = this.safeNumber (ticker, 'quoteVolume24h');
         const vwap = this.vwap (baseVolume, quoteVolume);
-        return {
+        return this.safeTicker ({
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
@@ -276,13 +268,13 @@ module.exports = class novadax extends Exchange {
             'close': last,
             'last': last,
             'previousClose': undefined,
-            'change': change,
-            'percentage': percentage,
-            'average': average,
+            'change': undefined,
+            'percentage': undefined,
+            'average': undefined,
             'baseVolume': baseVolume,
             'quoteVolume': quoteVolume,
             'info': ticker,
-        };
+        }, market);
     }
 
     async fetchTicker (symbol, params = {}) {
@@ -620,7 +612,8 @@ module.exports = class novadax extends Exchange {
             } else if (uppercaseType === 'MARKET') {
                 uppercaseType = 'STOP_MARKET';
             }
-            request['operator'] = (uppercaseSide === 'BUY') ? 'LTE' : 'GTE';
+            const defaultOperator = (uppercaseSide === 'BUY') ? 'LTE' : 'GTE';
+            request['operator'] = this.safeString (params, 'operator', defaultOperator);
             request['stopPrice'] = this.priceToPrecision (symbol, stopPrice);
             params = this.omit (params, 'stopPrice');
         }
@@ -912,6 +905,7 @@ module.exports = class novadax extends Exchange {
     }
 
     async withdraw (code, amount, address, tag = undefined, params = {}) {
+        [ tag, params ] = this.handleWithdrawTagAndParams (tag, params);
         await this.loadMarkets ();
         const currency = this.currency (code);
         const request = {

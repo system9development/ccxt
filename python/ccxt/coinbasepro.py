@@ -34,7 +34,7 @@ class coinbasepro(Exchange):
             'id': 'coinbasepro',
             'name': 'Coinbase Pro',
             'countries': ['US'],
-            'rateLimit': 1000,
+            'rateLimit': 100,
             'userAgent': self.userAgents['chrome'],
             'pro': True,
             'has': {
@@ -46,9 +46,10 @@ class coinbasepro(Exchange):
                 'deposit': True,
                 'fetchAccounts': True,
                 'fetchBalance': True,
-                'fetchCurrencies': True,
                 'fetchClosedOrders': True,
-                'fetchDepositAddress': False,  # the exchange does not have self method, only createDepositAddress, see https://github.com/ccxt/ccxt/pull/7405
+                'fetchCurrencies': True,
+                'fetchDepositAddress': None,  # the exchange does not have self method, only createDepositAddress, see https://github.com/ccxt/ccxt/pull/7405
+                'fetchDeposits': True,
                 'fetchMarkets': True,
                 'fetchMyTrades': True,
                 'fetchOHLCV': True,
@@ -57,13 +58,12 @@ class coinbasepro(Exchange):
                 'fetchOrderBook': True,
                 'fetchOrders': True,
                 'fetchOrderTrades': True,
-                'fetchTime': True,
                 'fetchTicker': True,
+                'fetchTime': True,
                 'fetchTrades': True,
                 'fetchTransactions': True,
-                'withdraw': True,
-                'fetchDeposits': True,
                 'fetchWithdrawals': True,
+                'withdraw': True,
             },
             'timeframes': {
                 '1m': 60,
@@ -939,6 +939,7 @@ class coinbasepro(Exchange):
         }
 
     def withdraw(self, code, amount, address, tag=None, params={}):
+        tag, params = self.handle_withdraw_tag_and_params(tag, params)
         self.check_address(address)
         self.load_markets()
         currency = self.currency(code)
@@ -1120,8 +1121,8 @@ class coinbasepro(Exchange):
                 raise ExchangeError(feedback)  # unknown message
             raise ExchangeError(self.id + ' ' + body)
 
-    def request(self, path, api='public', method='GET', params={}, headers=None, body=None):
-        response = self.fetch2(path, api, method, params, headers, body)
+    def request(self, path, api='public', method='GET', params={}, headers=None, body=None, config={}, context={}):
+        response = self.fetch2(path, api, method, params, headers, body, config, context)
         if not isinstance(response, basestring):
             if 'message' in response:
                 raise ExchangeError(self.id + ' ' + self.json(response))

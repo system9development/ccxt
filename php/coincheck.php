@@ -19,12 +19,12 @@ class coincheck extends Exchange {
             'rateLimit' => 1500,
             'has' => array(
                 'cancelOrder' => true,
-                'CORS' => false,
+                'CORS' => null,
                 'createOrder' => true,
                 'fetchBalance' => true,
                 'fetchMyTrades' => true,
-                'fetchOrderBook' => true,
                 'fetchOpenOrders' => true,
+                'fetchOrderBook' => true,
                 'fetchTicker' => true,
                 'fetchTrades' => true,
             ),
@@ -115,6 +115,12 @@ class coincheck extends Exchange {
                     'maker' => $this->parse_number('0'),
                     'taker' => $this->parse_number('0'),
                 ),
+            ),
+            'exceptions' => array(
+                'exact' => array(
+                    'disabled API Key' => '\\ccxt\\AuthenticationError', // array("success":false,"error":"disabled API Key")'
+                ),
+                'broad' => array(),
             ),
         ));
     }
@@ -415,16 +421,20 @@ class coincheck extends Exchange {
         return array( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
     }
 
-    public function request($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
-        $response = $this->fetch2($path, $api, $method, $params, $headers, $body);
-        if ($api === 'public') {
-            return $response;
+    public function handle_errors($httpCode, $reason, $url, $method, $headers, $body, $response, $requestHeaders, $requestBody) {
+        if ($response === null) {
+            return;
         }
-        if (is_array($response) && array_key_exists('success', $response)) {
-            if ($response['success']) {
-                return $response;
-            }
+        //
+        //     array("$success":false,"$error":"disabled API Key")'
+        //
+        $success = $this->safe_value($response, 'success', true);
+        if (!$success) {
+            $error = $this->safe_string($response, 'error');
+            $feedback = $this->id . ' ' . $this->json($response);
+            $this->throw_exactly_matched_exception($this->exceptions['exact'], $error, $feedback);
+            $this->throw_broadly_matched_exception($this->exceptions['broad'], $body, $feedback);
+            throw new ExchangeError($this->id . ' ' . $this->json($response));
         }
-        throw new ExchangeError($this->id . ' ' . $this->json($response));
     }
 }

@@ -19,27 +19,27 @@ module.exports = class gemini extends Exchange {
             'version': 'v1',
             'has': {
                 'cancelOrder': true,
-                'CORS': false,
+                'CORS': undefined,
                 'createDepositAddress': true,
-                'createMarketOrder': false,
+                'createMarketOrder': undefined,
                 'createOrder': true,
                 'fetchBalance': true,
-                'fetchBidsAsks': false,
-                'fetchClosedOrders': false,
-                'fetchDepositAddress': false,
-                'fetchDeposits': false,
+                'fetchBidsAsks': undefined,
+                'fetchClosedOrders': undefined,
+                'fetchDepositAddress': undefined,
+                'fetchDeposits': undefined,
                 'fetchMarkets': true,
                 'fetchMyTrades': true,
                 'fetchOHLCV': true,
                 'fetchOpenOrders': true,
                 'fetchOrder': true,
                 'fetchOrderBook': true,
-                'fetchOrders': false,
+                'fetchOrders': undefined,
                 'fetchTicker': true,
                 'fetchTickers': true,
                 'fetchTrades': true,
                 'fetchTransactions': true,
-                'fetchWithdrawals': false,
+                'fetchWithdrawals': undefined,
                 'withdraw': true,
             },
             'urls': {
@@ -90,6 +90,7 @@ module.exports = class gemini extends Exchange {
                 },
                 'private': {
                     'post': [
+                        'v1/account/list',
                         'v1/order/new',
                         'v1/order/cancel',
                         'v1/order/cancel/session',
@@ -461,29 +462,12 @@ module.exports = class gemini extends Exchange {
         }
         const price = this.safeNumber (ticker, 'price');
         const last = this.safeNumber2 (ticker, 'last', 'close', price);
-        let percentage = this.safeNumber (ticker, 'percentChange24h');
-        let change = undefined;
-        let open = this.safeNumber (ticker, 'open');
-        let average = undefined;
-        if (last !== undefined) {
-            if (open !== undefined) {
-                change = last - open;
-                if (open !== 0) {
-                    percentage = change / open * 100;
-                }
-                average = this.sum (last, open) / 2;
-            } else if (percentage !== undefined) {
-                change = last * percentage;
-                if (open === undefined) {
-                    open = last - change;
-                }
-                average = this.sum (last, open) / 2;
-            }
-        }
+        const percentage = this.safeNumber (ticker, 'percentChange24h');
+        const open = this.safeNumber (ticker, 'open');
         const baseVolume = this.safeNumber (volume, baseId);
         const quoteVolume = this.safeNumber (volume, quoteId);
         const vwap = this.vwap (baseVolume, quoteVolume);
-        return {
+        return this.safeTicker ({
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
@@ -498,13 +482,13 @@ module.exports = class gemini extends Exchange {
             'close': last,
             'last': last,
             'previousClose': undefined, // previous day close
-            'change': change,
+            'change': undefined,
             'percentage': percentage,
-            'average': average,
+            'average': undefined,
             'baseVolume': baseVolume,
             'quoteVolume': quoteVolume,
             'info': ticker,
-        };
+        }, market);
     }
 
     async fetchTickers (symbols = undefined, params = {}) {
@@ -735,6 +719,7 @@ module.exports = class gemini extends Exchange {
     }
 
     async withdraw (code, amount, address, tag = undefined, params = {}) {
+        [ tag, params ] = this.handleWithdrawTagAndParams (tag, params);
         this.checkAddress (address);
         await this.loadMarkets ();
         const currency = this.currency (code);

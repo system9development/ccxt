@@ -9,7 +9,6 @@ use Exception; // a common import
 use \ccxt\ExchangeError;
 use \ccxt\ArgumentsRequired;
 use \ccxt\OrderNotFound;
-use \ccxt\NotSupported;
 use \ccxt\Precise;
 
 class phemex extends Exchange {
@@ -25,7 +24,7 @@ class phemex extends Exchange {
             'pro' => true,
             'hostname' => 'api.phemex.com',
             'has' => array(
-                'cancelAllOrders' => true, // swap contracts only
+                'cancelAllOrders' => true,
                 'cancelOrder' => true,
                 'createOrder' => true,
                 'fetchBalance' => true,
@@ -33,13 +32,16 @@ class phemex extends Exchange {
                 'fetchCurrencies' => true,
                 'fetchDepositAddress' => true,
                 'fetchDeposits' => true,
+                'fetchIndexOHLCV' => false,
                 'fetchMarkets' => true,
+                'fetchMarkOHLCV' => false,
                 'fetchMyTrades' => true,
                 'fetchOHLCV' => true,
                 'fetchOpenOrders' => true,
                 'fetchOrder' => true,
                 'fetchOrderBook' => true,
                 'fetchOrders' => true,
+                'fetchPremiumIndexOHLCV' => false,
                 'fetchTicker' => true,
                 'fetchTrades' => true,
                 'fetchWithdrawals' => true,
@@ -149,6 +151,7 @@ class phemex extends Exchange {
                     'delete' => array(
                         // spot
                         'spot/orders', // ?symbol=<symbol>&orderID=<orderID>
+                        'spot/orders/all', // ?symbol=<symbol>&untriggered=<untriggered>
                         // 'spot/orders', // ?symbol=<symbol>&clOrdID=<clOrdID>
                         // swap
                         'orders/cancel', // ?symbol=<symbol>&orderID=<orderID>
@@ -310,6 +313,13 @@ class phemex extends Exchange {
             'options' => array(
                 'x-phemex-request-expiry' => 60, // in seconds
                 'createOrderByQuoteRequiresPrice' => true,
+                'networks' => array(
+                    'TRC20' => 'TRX',
+                    'ERC20' => 'ETH',
+                ),
+                'defaultNetworks' => array(
+                    'USDT' => 'ETH',
+                ),
             ),
         ));
     }
@@ -1933,21 +1943,22 @@ class phemex extends Exchange {
     }
 
     public function cancel_all_orders($symbol = null, $params = array ()) {
+        if ($symbol === null) {
+            throw new ArgumentsRequired($this->id . ' cancelOrder() requires a $symbol argument');
+        }
         yield $this->load_markets();
         $request = array(
             // 'symbol' => $market['id'],
             // 'untriggerred' => false, // false to cancel non-conditional orders, true to cancel conditional orders
             // 'text' => 'up to 40 characters max',
         );
-        $market = null;
-        if ($symbol !== null) {
-            $market = $this->market($symbol);
-            if (!$market['swap']) {
-                throw new NotSupported($this->id . ' cancelAllOrders() supports swap $market type orders only');
-            }
-            $request['symbol'] = $market['id'];
+        $market = $this->market($symbol);
+        $method = 'privateDeleteSpotOrdersAll';
+        if ($market['swap']) {
+            $method = 'privateDeleteOrdersAll';
         }
-        return yield $this->privateDeleteOrdersAll (array_merge($request, $params));
+        $request['symbol'] = $market['id'];
+        return yield $this->$method (array_merge($request, $params));
     }
 
     public function fetch_order($id, $symbol = null, $params = array ()) {
@@ -2197,6 +2208,17 @@ class phemex extends Exchange {
         $request = array(
             'currency' => $currency['id'],
         );
+        $defaultNetworks = $this->safe_value($this->options, 'defaultNetworks');
+        $defaultNetwork = $this->safe_string_upper($defaultNetworks, $code);
+        $networks = $this->safe_value($this->options, 'networks', array());
+        $network = $this->safe_string_upper($params, 'network', $defaultNetwork);
+        $network = $this->safe_string($networks, $network, $network);
+        if ($network === null) {
+            $request['chainName'] = $currency['id'];
+        } else {
+            $request['chainName'] = $network;
+            $params = $this->omit($params, 'network');
+        }
         $response = yield $this->privateGetPhemexUserWalletsV2DepositAddress (array_merge($request, $params));
         //     {
         //         "$code":0,

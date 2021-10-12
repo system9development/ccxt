@@ -35,19 +35,23 @@ class okex(Exchange):
             'name': 'OKEX',
             'countries': ['CN', 'US'],
             'version': 'v5',
-            'rateLimit': 1000,  # up to 3000 requests per 5 minutes ≈ 600 requests per minute ≈ 10 requests per second ≈ 100 ms
+            'rateLimit': 100,
             'pro': True,
+            'certified': True,
             'has': {
-                'CORS': False,
                 'cancelOrder': True,
+                'CORS': None,
                 'createOrder': True,
                 'fetchBalance': True,
                 'fetchClosedOrders': True,
-                'fetchCurrencies': False,  # see below
+                'fetchCurrencies': True,
                 'fetchDepositAddress': True,
+                'fetchDepositAddressByNetwork': True,
                 'fetchDeposits': True,
+                'fetchIndexOHLCV': True,
                 'fetchLedger': True,
                 'fetchMarkets': True,
+                'fetchMarkOHLCV': True,
                 'fetchMyTrades': True,
                 'fetchOHLCV': True,
                 'fetchOpenOrders': True,
@@ -99,95 +103,96 @@ class okex(Exchange):
             },
             'api': {
                 'public': {
-                    'get': [
-                        'market/tickers',
-                        'market/ticker',
-                        'market/index-tickers',
-                        'market/books',
-                        'market/candles',
-                        'market/history-candles',
-                        'market/index-candles',
-                        'market/mark-price-candles',
-                        'market/trades',
-                        'market/platform-24-volume',
-                        'market/open-oracle',
-                        'market/oracle',
-                        'public/instruments',
-                        'public/delivery-exercise-history',
-                        'public/open-interest',
-                        'public/funding-rate',
-                        'public/funding-rate-history',
-                        'public/price-limit',
-                        'public/opt-summary',
-                        'public/estimated-price',
-                        'public/discount-rate-interest-free-quota',
-                        'public/time',
-                        'public/liquidation-orders',
-                        'public/mark-price',
-                        'public/tier',
-                        'public/position-tiers',
-                        'public/underlying',
-                        'public/interest-rate-loan-quota',
-                        'system/status',
-                    ],
+                    'get': {
+                        'market/tickers': 1,
+                        'market/ticker': 1,
+                        'market/index-tickers': 1,
+                        'market/books': 1,
+                        'market/candles': 1,
+                        'market/history-candles': 1,
+                        'market/index-candles': 1,
+                        'market/mark-price-candles': 1,
+                        'market/trades': 1,
+                        'market/platform-24-volume': 10,
+                        'market/open-oracle': 100,
+                        # 'market/oracle',
+                        'public/instruments': 1,
+                        'public/delivery-exercise-history': 0.5,
+                        'public/open-interest': 1,
+                        'public/funding-rate': 1,
+                        'public/funding-rate-history': 1,
+                        'public/price-limit': 1,
+                        'public/opt-summary': 1,
+                        'public/estimated-price': 2,
+                        'public/discount-rate-interest-free-quota': 10,
+                        'public/time': 2,
+                        'public/liquidation-orders': 0.5,
+                        'public/mark-price': 2,
+                        # 'public/tier',
+                        'public/position-tiers': 2,
+                        'public/underlying': 1,
+                        'public/interest-rate-loan-quota': 10,
+                        'system/status': 100,
+                    },
                 },
                 'private': {
-                    'get': [
-                        'account/account-position-risk',
-                        'account/balance',
-                        'account/positions',
-                        'account/bills',
-                        'account/bills-archive',
-                        'account/config',
-                        'account/max-size',
-                        'account/max-avail-size',
-                        'account/leverage-info',
-                        'account/max-loan',
-                        'account/trade-fee',
-                        'account/interest-accrued',
-                        'account/interest-rate',
-                        'account/max-withdrawal',
-                        'asset/deposit-address',
-                        'asset/balances',
-                        'asset/deposit-history',
-                        'asset/withdrawal-history',
-                        'asset/currencies',
-                        'asset/bills',
-                        'asset/piggy-balance',
-                        'trade/order',
-                        'trade/orders-pending',
-                        'trade/orders-history',
-                        'trade/orders-history-archive',
-                        'trade/fills',
-                        'trade/fills-history',
-                        'trade/orders-algo-pending',
-                        'trade/orders-algo-history',
-                        'account/subaccount/balances',
-                        'asset/subaccount/bills',
-                        'users/subaccount/list',
-                    ],
-                    'post': [
-                        'account/set-position-mode',
-                        'account/set-leverage',
-                        'account/position/margin-balance',
-                        'account/set-greeks',
-                        'asset/transfer',
-                        'asset/withdrawal',
-                        'asset/purchase_redempt',
-                        'trade/order',
-                        'trade/batch-orders',
-                        'trade/cancel-order',
-                        'trade/cancel-batch-orders',
-                        'trade/amend-order',
-                        'trade/amend-batch-orders',
-                        'trade/close-position',
-                        'trade/order-algo',
-                        'trade/cancel-algos',
-                        'users/subaccount/delete-apikey',
-                        'users/subaccount/modify-apikey',
-                        'users/subaccount/apikey',
-                        'asset/subaccount/transfer',
-                    ],
+                    'get': {
+                        'account/account-position-risk': 2,
+                        'account/balance': 2,
+                        'account/positions': 2,
+                        'account/bills': 5 / 3,
+                        'account/bills-archive': 5 / 3,
+                        'account/config': 4,
+                        'account/max-size': 1,
+                        'account/max-avail-size': 1,
+                        'account/leverage-info': 1,
+                        'account/max-loan': 1,
+                        'account/trade-fee': 4,
+                        'account/interest-accrued': 4,
+                        'account/interest-rate': 4,
+                        'account/max-withdrawal': 1,
+                        'asset/deposit-address': 5 / 3,
+                        'asset/balances': 5 / 3,
+                        'asset/deposit-history': 5 / 3,
+                        'asset/withdrawal-history': 5 / 3,
+                        'asset/currencies': 5 / 3,
+                        'asset/bills': 5 / 3,
+                        'asset/piggy-balance': 5 / 3,
+                        'trade/order': 1 / 3,
+                        'trade/orders-pending': 1,
+                        'trade/orders-history': 0.5,
+                        'trade/orders-history-archive': 1,
+                        'trade/fills': 1 / 3,
+                        'trade/fills-history': 2,
+                        'trade/orders-algo-pending': 1,
+                        'trade/orders-algo-history': 1,
+                        'account/subaccount/balances': 10,
+                        'asset/subaccount/bills': 5 / 3,
+                        'users/subaccount/list': 10,
+                    },
+                    'post': {
+                        'account/set-position-mode': 4,
+                        'account/set-leverage': 1,
+                        'account/position/margin-balance': 1,
+                        'account/set-greeks': 4,
+                        'asset/transfer': 10,
+                        'asset/withdrawal': 5 / 3,
+                        'asset/purchase_redempt': 5 / 3,
+                        'trade/order': 1 / 3,
+                        'trade/batch-orders': 1 / 15,
+                        'trade/cancel-order': 1 / 3,
+                        'trade/cancel-batch-orders': 1 / 15,
+                        'trade/amend-order': 1 / 3,
+                        'trade/amend-batch-orders': 1 / 3,
+                        'trade/close-position': 1,
+                        'trade/order-algo': 1,
+                        'trade/cancel-algos': 1,
+                        'trade/cancel-advance-algos': 1,
+                        'users/subaccount/delete-apikey': 10,
+                        'users/subaccount/modify-apikey': 10,
+                        'users/subaccount/apikey': 10,
+                        'asset/subaccount/transfer': 10,
+                    },
                 },
             },
             'fees': {
@@ -497,9 +502,16 @@ class okex(Exchange):
             },
             'precisionMode': TICK_SIZE,
             'options': {
+                'defaultNetwork': 'ERC20',
+                'networks': {
+                    'ETH': 'ERC20',
+                    'TRX': 'TRC20',
+                    'OMNI': 'Omni',
+                },
                 'fetchOHLCV': {
                     'type': 'Candles',  # Candles or HistoryCandles, IndexCandles, MarkPriceCandles
                 },
+                'createOrder': 'privatePostTradeBatchOrders',  # or 'privatePostTradeOrder'
                 'createMarketBuyOrderRequiresPrice': True,
                 'fetchMarkets': ['spot', 'futures', 'swap'],  # spot, futures, swap, option
                 'defaultType': 'spot',  # 'funding', 'spot', 'margin', 'futures', 'swap', 'option'
@@ -751,7 +763,21 @@ class okex(Exchange):
         data = self.safe_value(response, 'data', [])
         return self.parse_markets(data)
 
+    def safe_network(self, networkId):
+        networksById = {
+            'Bitcoin': 'BTC',
+            'Omni': 'OMNI',
+            'TRON': 'TRC20',
+        }
+        return self.safe_string(networksById, networkId, networkId)
+
     async def fetch_currencies(self, params={}):
+        # self endpoint requires authentication
+        # while fetchCurrencies is a public API method by design
+        # therefore we check the keys here
+        # and fallback to generating the currencies from the markets
+        if not self.check_required_credentials(False):
+            return None
         # has['fetchCurrencies'] is currently set to False
         # it will reply with {"msg":"Request header “OK_ACCESS_KEY“ can't be empty.","code":"50103"}
         # if you attempt to access it without authentication
@@ -779,36 +805,53 @@ class okex(Exchange):
         result = {}
         dataByCurrencyId = self.group_by(data, 'ccy')
         currencyIds = list(dataByCurrencyId.keys())
+        precision = self.parse_number('0.00000001')  # default precision, todo: fix "magic constants"
         for i in range(0, len(currencyIds)):
             currencyId = currencyIds[i]
+            code = self.safe_currency_code(currencyId)
             chains = dataByCurrencyId[currencyId]
-            first = self.safe_value(chains, 0)
-            id = self.safe_string(first, 'ccy')
-            code = self.safe_currency_code(id)
-            precision = 0.00000001  # default precision, todo: fix "magic constants"
-            name = self.safe_string(first, 'name')
-            if (name is not None) and (len(name) < 1):
-                name = None
-            canDeposit = self.safe_value(first, 'canDep')
-            canWithdraw = self.safe_value(first, 'canWd')
-            canInternal = self.safe_value(first, 'canInternal')
-            active = True if (canDeposit and canWithdraw and canInternal) else False
+            networks = {}
+            currencyActive = False
+            for j in range(0, len(chains)):
+                chain = chains[j]
+                canDeposit = self.safe_value(chain, 'canDep')
+                canWithdraw = self.safe_value(chain, 'canWd')
+                canInternal = self.safe_value(chain, 'canInternal')
+                active = True if (canDeposit and canWithdraw and canInternal) else False
+                currencyActive = currencyActive or active
+                networkId = self.safe_string(chain, 'chain')
+                if networkId.find('-') >= 0:
+                    parts = networkId.split('-')
+                    networkId = self.safe_string(parts, 1, networkId)
+                    network = self.safe_network(networkId)
+                    networks[network] = {
+                        'info': chain,
+                        'id': networkId,
+                        'network': network,
+                        'active': active,
+                        'fee': self.safe_number(chain, 'minFee'),
+                        'precision': None,
+                        'limits': {
+                            'withdraw': {
+                                'min': self.safe_number(chain, 'minWd'),
+                                'max': None,
+                            },
+                        },
+                    }
             result[code] = {
-                'id': id,
                 'code': code,
-                'info': chains,
-                'type': None,
-                'name': name,
-                'active': active,
-                'fee': self.safe_number(first, 'minFee'),
+                'id': currencyId,
+                'name': None,
+                'active': currencyActive,
+                'fee': None,
                 'precision': precision,
                 'limits': {
-                    'amount': {'min': None, 'max': None},
-                    'withdraw': {
-                        'min': self.safe_number(first, 'ccy'),
+                    'amount': {
+                        'min': None,
                         'max': None,
                     },
                 },
+                'networks': networks,
             }
         return result
 
@@ -1109,6 +1152,8 @@ class okex(Exchange):
     async def fetch_ohlcv(self, symbol, timeframe='1m', since=None, limit=None, params={}):
         await self.load_markets()
         market = self.market(symbol)
+        price = self.safe_string(params, 'price')
+        params = self.omit(params, 'price')
         request = {
             'instId': market['id'],
             'bar': self.timeframes[timeframe],
@@ -1120,6 +1165,10 @@ class okex(Exchange):
         type = self.safe_string(params, 'type', defaultType)
         params = self.omit(params, 'type')
         method = 'publicGetMarket' + type
+        if price == 'mark':
+            method = 'publicGetMarketMarkPriceCandles'
+        elif price == 'index':
+            method = 'publicGetMarketIndexCandles'
         if since is not None:
             request['before'] = since - 1
         response = await getattr(self, method)(self.extend(request, params))
@@ -1136,6 +1185,18 @@ class okex(Exchange):
         #
         data = self.safe_value(response, 'data', [])
         return self.parse_ohlcvs(data, market, timeframe, since, limit)
+
+    async def fetch_index_ohlcv(self, symbol, timeframe='1m', since=None, limit=None, params={}):
+        request = {
+            'price': 'index',
+        }
+        return await self.fetch_ohlcv(symbol, timeframe, since, limit, self.extend(request, params))
+
+    async def fetch_mark_ohlcv(self, symbol, timeframe='1m', since=None, limit=None, params={}):
+        request = {
+            'price': 'mark',
+        }
+        return await self.fetch_ohlcv(symbol, timeframe, since, limit, self.extend(request, params))
 
     def parse_balance_by_type(self, type, response):
         if type == 'funding':
@@ -1378,7 +1439,18 @@ class okex(Exchange):
         else:
             request['px'] = self.price_to_precision(symbol, price)
             request['sz'] = self.amount_to_precision(symbol, amount)
-        response = await self.privatePostTradeOrder(self.extend(request, params))
+        extendedRequest = None
+        defaultMethod = self.safe_string(self.options, 'createOrder', 'privatePostTradeBatchOrders')  # or privatePostTradeOrder
+        if defaultMethod == 'privatePostTradeOrder':
+            extendedRequest = self.extend(request, params)
+        elif defaultMethod == 'privatePostTradeBatchOrders':
+            # keep the request body the same
+            # submit a single order in an array to the batch order endpoint
+            # because it has a lower ratelimit
+            extendedRequest = [self.extend(request, params)]
+        else:
+            raise ExchangeError(self.id + ' self.options["createOrder"] must be either privatePostTradeBatchOrders or privatePostTradeOrder')
+        response = await getattr(self, defaultMethod)(extendedRequest)
         #
         #     {
         #         "code": "0",
@@ -1678,7 +1750,7 @@ class okex(Exchange):
     async def fetch_closed_orders(self, symbol=None, since=None, limit=None, params={}):
         await self.load_markets()
         defaultType = self.safe_string(self.options, 'defaultType')
-        options = self.safe_string(self.options, 'fetchClosedOrders', {})
+        options = self.safe_value(self.options, 'fetchClosedOrders', {})
         type = self.safe_string(options, 'type', defaultType)
         type = self.safe_string(params, 'type', type)
         params = self.omit(params, 'type')
@@ -2044,23 +2116,38 @@ class okex(Exchange):
         #         "selected":true
         #     }
         #
+        #     {
+        #       "chain": "ETH-OKExChain",
+        #       "ctAddr": "72315c",
+        #       "ccy": "ETH",
+        #       "to": "6",
+        #       "addr": "0x1c9f2244d1ccaa060bd536827c18925db10db102",
+        #       "selected": True
+        #     }
+        #
         address = self.safe_string(depositAddress, 'addr')
         tag = self.safe_string_2(depositAddress, 'tag', 'pmtId')
         tag = self.safe_string(depositAddress, 'memo', tag)
         currencyId = self.safe_string(depositAddress, 'ccy')
         code = self.safe_currency_code(currencyId)
+        chain = self.safe_string(depositAddress, 'chain')
+        network = None
+        if chain.find('-') > -1:
+            parts = chain.split('-')
+            networkId = self.safe_string(parts, 1)
+            network = self.safe_network(networkId)
         self.check_address(address)
         return {
             'currency': code,
             'address': address,
             'tag': tag,
+            'network': network,
             'info': depositAddress,
         }
 
-    async def fetch_deposit_address(self, code, params={}):
+    async def fetch_deposit_addresses_by_network(self, code, params={}):
         await self.load_markets()
-        parts = code.split('-')
-        currency = self.currency(parts[0])
+        currency = self.currency(code)
         request = {
             'ccy': currency['id'],
         }
@@ -2087,13 +2174,37 @@ class okex(Exchange):
         #     }
         #
         data = self.safe_value(response, 'data', [])
-        addressesByCode = self.parse_deposit_addresses(data)
-        address = self.safe_value(addressesByCode, code)
-        if address is None:
-            raise InvalidAddress(self.id + ' fetchDepositAddress cannot return nonexistent addresses, you should create withdrawal addresses with the exchange website first')
-        return address
+        filtered = self.filter_by(data, 'selected', True)
+        parsed = self.parse_deposit_addresses(filtered, [code], False)
+        return self.index_by(parsed, 'network')
+
+    async def fetch_deposit_address(self, code, params={}):
+        response = await self.fetch_deposit_addresses_by_network(code, params)
+        rawNetwork = self.safe_string(params, 'network')
+        networks = self.safe_value(self.options, 'networks', {})
+        network = self.safe_string(networks, rawNetwork, rawNetwork)
+        result = None
+        if network is None:
+            result = self.safe_value(response, code)
+            if result is None:
+                alias = self.safe_string(networks, code, code)
+                result = self.safe_value(response, alias)
+                if result is None:
+                    defaultNetwork = self.safe_string(self.options, 'defaultNetwork', 'ERC20')
+                    result = self.safe_value(response, defaultNetwork)
+                    if result is None:
+                        values = list(response.values())
+                        result = self.safe_value(values, 0)
+                        if result is None:
+                            raise InvalidAddress(self.id + ' fetchDepositAddress() cannot find deposit address for ' + code)
+            return result
+        result = self.safe_value(response, network)
+        if result is None:
+            raise InvalidAddress(self.id + ' fetchDepositAddress() cannot find ' + network + ' deposit address for ' + code)
+        return result
 
     async def withdraw(self, code, amount, address, tag=None, params={}):
+        tag, params = self.handle_withdraw_tag_and_params(tag, params)
         self.check_address(address)
         await self.load_markets()
         currency = self.currency(code)
@@ -2101,7 +2212,7 @@ class okex(Exchange):
             address = address + ':' + tag
         fee = self.safe_string(params, 'fee')
         if fee is None:
-            raise ArgumentsRequired(self.id + " withdraw() requires a `fee` string parameter, network transaction fee must be ≥ 0. Withdrawals to OKCoin or OKEx are fee-free, please set '0'. Withdrawing to external digital asset address requires network transaction fee.")
+            raise ArgumentsRequired(self.id + " withdraw() requires a 'fee' string parameter, network transaction fee must be ≥ 0. Withdrawals to OKCoin or OKEx are fee-free, please set '0'. Withdrawing to external digital asset address requires network transaction fee.")
         request = {
             'ccy': currency['id'],
             'toAddr': address,
@@ -2113,6 +2224,12 @@ class okex(Exchange):
             request['pwd'] = params['password']
         elif 'pwd' in params:
             request['pwd'] = params['pwd']
+        networks = self.safe_value(self.options, 'networks', {})
+        network = self.safe_string_upper(params, 'network')  # self line allows the user to specify either ERC20 or ETH
+        network = self.safe_string(networks, network, network)  # handle ETH>ERC20 alias
+        if network is not None:
+            request['chain'] = currency['id'] + '-' + network
+            params = self.omit(params, 'network')
         query = self.omit(params, ['fee', 'password', 'pwd'])
         if not ('pwd' in request):
             raise ExchangeError(self.id + ' withdraw() requires a password parameter or a pwd parameter, it must be the funding password, not the API passphrase')
@@ -2432,7 +2549,10 @@ class okex(Exchange):
         #     }
         #
         data = self.safe_value(response, 'data', [])
-        return self.parse_position(self.safe_value(data, 0))
+        position = self.safe_value(data, 0)
+        if position is None:
+            return position
+        return self.parse_position(position)
 
     async def fetch_positions(self, symbols=None, params={}):
         await self.load_markets()

@@ -28,14 +28,14 @@ class bitbns extends Exchange {
                 'fetchDeposits' => true,
                 'fetchMarkets' => true,
                 'fetchMyTrades' => true,
-                'fetchOHLCV' => false,
+                'fetchOHLCV' => null,
                 'fetchOpenOrders' => true,
                 'fetchOrder' => true,
                 'fetchOrderBook' => true,
                 'fetchStatus' => true,
                 'fetchTicker' => 'emulated',
                 'fetchTickers' => true,
-                'fetchTrades' => false,
+                'fetchTrades' => null,
                 'fetchWithdrawals' => true,
             ),
             'timeframes' => array(
@@ -188,6 +188,7 @@ class bitbns extends Exchange {
             $priceLimits = $this->safe_value($marketLimits, 'price', array());
             $costLimits = $this->safe_value($marketLimits, 'cost', array());
             $usdt = ($quoteId === 'USDT');
+            // INR markets don't need a _INR prefix
             $uppercaseId = $usdt ? ($baseId . '_' . $quoteId) : $baseId;
             $result[] = array(
                 'id' => $id,
@@ -285,7 +286,7 @@ class bitbns extends Exchange {
         $marketId = $this->safe_string($ticker, 'symbol');
         $symbol = $this->safe_symbol($marketId, $market);
         $last = $this->safe_number($ticker, 'last');
-        return array(
+        return $this->safe_ticker(array(
             'symbol' => $symbol,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601($timestamp),
@@ -306,7 +307,7 @@ class bitbns extends Exchange {
             'baseVolume' => $this->safe_number($ticker, 'baseVolume'),
             'quoteVolume' => $this->safe_number($ticker, 'quoteVolume'),
             'info' => $ticker,
-        );
+        ), $market);
     }
 
     public function fetch_tickers($symbols = null, $params = array ()) {
@@ -505,7 +506,7 @@ class bitbns extends Exchange {
         $market = $this->market($symbol);
         $request = array(
             'side' => strtoupper($side),
-            'symbol' => $market['baseId'] . '_' . $market['quoteId'],
+            'symbol' => $market['uppercaseId'],
             'quantity' => $this->amount_to_precision($symbol, $amount),
             'rate' => $this->price_to_precision($symbol, $price),
             // 'target_rate' => $this->price_to_precision($symbol, targetRate),

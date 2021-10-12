@@ -17,26 +17,26 @@ module.exports = class probit extends Exchange {
             'countries': [ 'SC', 'KR' ], // Seychelles, South Korea
             'rateLimit': 250, // ms
             'has': {
-                'CORS': true,
-                'fetchTime': true,
-                'fetchMarkets': true,
-                'fetchCurrencies': true,
-                'fetchTickers': true,
-                'fetchTicker': true,
-                'fetchOHLCV': true,
-                'fetchOrderBook': true,
-                'fetchTrades': true,
-                'fetchBalance': true,
-                'createOrder': true,
-                'createMarketOrder': true,
                 'cancelOrder': true,
-                'fetchOrder': true,
-                'fetchOpenOrders': true,
+                'CORS': true,
+                'createMarketOrder': true,
+                'createOrder': true,
+                'fetchBalance': true,
                 'fetchClosedOrders': true,
-                'fetchMyTrades': true,
+                'fetchCurrencies': true,
                 'fetchDepositAddress': true,
-                'withdraw': true,
+                'fetchMarkets': true,
+                'fetchMyTrades': true,
+                'fetchOHLCV': true,
+                'fetchOpenOrders': true,
+                'fetchOrder': true,
+                'fetchOrderBook': true,
+                'fetchTicker': true,
+                'fetchTickers': true,
+                'fetchTime': true,
+                'fetchTrades': true,
                 'signIn': true,
+                'withdraw': true,
             },
             'timeframes': {
                 '1m': '1m',
@@ -141,6 +141,12 @@ module.exports = class probit extends Exchange {
                     'limit': 'gtc',
                     'market': 'ioc',
                 },
+                'networks': {
+                    'BEP20': 'BSC',
+                    'ERC20': 'ETH',
+                    'TRC20': 'TRON',
+                    'TRX': 'TRON',
+                },
             },
             'commonCurrencies': {
                 'AUTO': 'Cube',
@@ -150,9 +156,14 @@ module.exports = class probit extends Exchange {
                 'BTCBULL': 'BULL',
                 'CBC': 'CryptoBharatCoin',
                 'EPS': 'Epanus',  // conflict with EPS Ellipsis https://github.com/ccxt/ccxt/issues/8909
+                'GOGOL': 'GOL',
+                'GOL': 'Goldofir',
+                'GRB': 'Global Reward Bank',
                 'HBC': 'Hybrid Bank Cash',
                 'ORC': 'Oracle System',
                 'SOC': 'Soda Coin',
+                'TCT': 'Top Coin Token',
+                'TPAY': 'Tetra Pay',
                 'UNI': 'UNICORN Token',
                 'UNISWAP': 'UNI',
             },
@@ -486,18 +497,10 @@ module.exports = class probit extends Exchange {
         const symbol = this.safeSymbol (marketId, market, '-');
         const close = this.safeNumber (ticker, 'last');
         const change = this.safeNumber (ticker, 'change');
-        let percentage = undefined;
-        let open = undefined;
-        if (change !== undefined) {
-            if (close !== undefined) {
-                open = close - change;
-                percentage = (change / open) * 100;
-            }
-        }
         const baseVolume = this.safeNumber (ticker, 'base_volume');
         const quoteVolume = this.safeNumber (ticker, 'quote_volume');
         const vwap = this.vwap (baseVolume, quoteVolume);
-        return {
+        return this.safeTicker ({
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
@@ -508,17 +511,17 @@ module.exports = class probit extends Exchange {
             'ask': undefined,
             'askVolume': undefined,
             'vwap': vwap,
-            'open': open,
+            'open': undefined,
             'close': close,
             'last': close,
             'previousClose': undefined, // previous day close
             'change': change,
-            'percentage': percentage,
+            'percentage': undefined,
             'average': undefined,
             'baseVolume': baseVolume,
             'quoteVolume': quoteVolume,
             'info': ticker,
-        };
+        }, market);
     }
 
     async fetchMyTrades (symbol = undefined, since = undefined, limit = undefined, params = {}) {
@@ -1091,6 +1094,7 @@ module.exports = class probit extends Exchange {
     }
 
     async withdraw (code, amount, address, tag = undefined, params = {}) {
+        [ tag, params ] = this.handleWithdrawTagAndParams (tag, params);
         // In order to use this method
         // you need to allow API withdrawal from the API Settings Page, and
         // and register the list of withdrawal addresses and destination tags on the API Settings page
@@ -1113,6 +1117,13 @@ module.exports = class probit extends Exchange {
             // whether the amount field includes fees
             // 'include_fee': false, // makes sense only when fee_currency_id is equal to currency_id
         };
+        const networks = this.safeValue (this.options, 'networks', {});
+        let network = this.safeStringUpper (params, 'network'); // this line allows the user to specify either ERC20 or ETH
+        network = this.safeString (networks, network, network); // handle ERC20>ETH alias
+        if (network !== undefined) {
+            request['platform_id'] = network;
+            params = this.omit (params, 'network');
+        }
         const response = await this.privatePostWithdrawal (this.extend (request, params));
         const data = this.safeValue (response, 'data');
         return this.parseTransaction (data, currency);

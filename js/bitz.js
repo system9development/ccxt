@@ -20,11 +20,11 @@ module.exports = class bitz extends Exchange {
             'has': {
                 'cancelOrder': true,
                 'cancelOrders': true,
+                'createMarketOrder': undefined,
                 'createOrder': true,
-                'createMarketOrder': false,
                 'fetchBalance': true,
-                'fetchDeposits': true,
                 'fetchClosedOrders': true,
+                'fetchDeposits': true,
                 'fetchMarkets': true,
                 'fetchOHLCV': true,
                 'fetchOpenOrders': true,
@@ -35,7 +35,7 @@ module.exports = class bitz extends Exchange {
                 'fetchTickers': true,
                 'fetchTime': true,
                 'fetchTrades': true,
-                'fetchTransactions': false,
+                'fetchTransactions': undefined,
                 'fetchWithdrawals': true,
                 'withdraw': true,
             },
@@ -142,6 +142,7 @@ module.exports = class bitz extends Exchange {
                 // https://github.com/ccxt/ccxt/issues/3881
                 // https://support.bit-z.pro/hc/en-us/articles/360007500654-BOX-BOX-Token-
                 'BOX': 'BOX Token',
+                'XBT': 'XBT',
                 'LEO': 'LeoCoin',
                 'XRB': 'NANO',
                 'PXC': 'Pixiecoin',
@@ -1162,6 +1163,7 @@ module.exports = class bitz extends Exchange {
     }
 
     async withdraw (code, amount, address, tag = undefined, params = {}) {
+        [ tag, params ] = this.handleWithdrawTagAndParams (tag, params);
         this.checkAddress (address);
         await this.loadMarkets ();
         const currency = this.currency (code);

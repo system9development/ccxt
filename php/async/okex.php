@@ -20,19 +20,23 @@ class okex extends Exchange {
             'name' => 'OKEX',
             'countries' => array( 'CN', 'US' ),
             'version' => 'v5',
-            'rateLimit' => 1000, // up to 3000 requests per 5 minutes ≈ 600 requests per minute ≈ 10 requests per second ≈ 100 ms
+            'rateLimit' => 100,
             'pro' => true,
+            'certified' => true,
             'has' => array(
-                'CORS' => false,
                 'cancelOrder' => true,
+                'CORS' => null,
                 'createOrder' => true,
                 'fetchBalance' => true,
                 'fetchClosedOrders' => true,
-                'fetchCurrencies' => false, // see below
+                'fetchCurrencies' => true,
                 'fetchDepositAddress' => true,
+                'fetchDepositAddressByNetwork' => true,
                 'fetchDeposits' => true,
+                'fetchIndexOHLCV' => true,
                 'fetchLedger' => true,
                 'fetchMarkets' => true,
+                'fetchMarkOHLCV' => true,
                 'fetchMyTrades' => true,
                 'fetchOHLCV' => true,
                 'fetchOpenOrders' => true,
@@ -85,93 +89,94 @@ class okex extends Exchange {
             'api' => array(
                 'public' => array(
                     'get' => array(
-                        'market/tickers',
-                        'market/ticker',
-                        'market/index-tickers',
-                        'market/books',
-                        'market/candles',
-                        'market/history-candles',
-                        'market/index-candles',
-                        'market/mark-price-candles',
-                        'market/trades',
-                        'market/platform-24-volume',
-                        'market/open-oracle',
-                        'market/oracle',
-                        'public/instruments',
-                        'public/delivery-exercise-history',
-                        'public/open-interest',
-                        'public/funding-rate',
-                        'public/funding-rate-history',
-                        'public/price-limit',
-                        'public/opt-summary',
-                        'public/estimated-price',
-                        'public/discount-rate-interest-free-quota',
-                        'public/time',
-                        'public/liquidation-orders',
-                        'public/mark-price',
-                        'public/tier',
-                        'public/position-tiers',
-                        'public/underlying',
-                        'public/interest-rate-loan-quota',
-                        'system/status',
+                        'market/tickers' => 1,
+                        'market/ticker' => 1,
+                        'market/index-tickers' => 1,
+                        'market/books' => 1,
+                        'market/candles' => 1,
+                        'market/history-candles' => 1,
+                        'market/index-candles' => 1,
+                        'market/mark-price-candles' => 1,
+                        'market/trades' => 1,
+                        'market/platform-24-volume' => 10,
+                        'market/open-oracle' => 100,
+                        // 'market/oracle',
+                        'public/instruments' => 1,
+                        'public/delivery-exercise-history' => 0.5,
+                        'public/open-interest' => 1,
+                        'public/funding-rate' => 1,
+                        'public/funding-rate-history' => 1,
+                        'public/price-limit' => 1,
+                        'public/opt-summary' => 1,
+                        'public/estimated-price' => 2,
+                        'public/discount-rate-interest-free-quota' => 10,
+                        'public/time' => 2,
+                        'public/liquidation-orders' => 0.5,
+                        'public/mark-price' => 2,
+                        // 'public/tier',
+                        'public/position-tiers' => 2,
+                        'public/underlying' => 1,
+                        'public/interest-rate-loan-quota' => 10,
+                        'system/status' => 100,
                     ),
                 ),
                 'private' => array(
                     'get' => array(
-                        'account/account-position-risk',
-                        'account/balance',
-                        'account/positions',
-                        'account/bills',
-                        'account/bills-archive',
-                        'account/config',
-                        'account/max-size',
-                        'account/max-avail-size',
-                        'account/leverage-info',
-                        'account/max-loan',
-                        'account/trade-fee',
-                        'account/interest-accrued',
-                        'account/interest-rate',
-                        'account/max-withdrawal',
-                        'asset/deposit-address',
-                        'asset/balances',
-                        'asset/deposit-history',
-                        'asset/withdrawal-history',
-                        'asset/currencies',
-                        'asset/bills',
-                        'asset/piggy-balance',
-                        'trade/order',
-                        'trade/orders-pending',
-                        'trade/orders-history',
-                        'trade/orders-history-archive',
-                        'trade/fills',
-                        'trade/fills-history',
-                        'trade/orders-algo-pending',
-                        'trade/orders-algo-history',
-                        'account/subaccount/balances',
-                        'asset/subaccount/bills',
-                        'users/subaccount/list',
+                        'account/account-position-risk' => 2,
+                        'account/balance' => 2,
+                        'account/positions' => 2,
+                        'account/bills' => 5 / 3,
+                        'account/bills-archive' => 5 / 3,
+                        'account/config' => 4,
+                        'account/max-size' => 1,
+                        'account/max-avail-size' => 1,
+                        'account/leverage-info' => 1,
+                        'account/max-loan' => 1,
+                        'account/trade-fee' => 4,
+                        'account/interest-accrued' => 4,
+                        'account/interest-rate' => 4,
+                        'account/max-withdrawal' => 1,
+                        'asset/deposit-address' => 5 / 3,
+                        'asset/balances' => 5 / 3,
+                        'asset/deposit-history' => 5 / 3,
+                        'asset/withdrawal-history' => 5 / 3,
+                        'asset/currencies' => 5 / 3,
+                        'asset/bills' => 5 / 3,
+                        'asset/piggy-balance' => 5 / 3,
+                        'trade/order' => 1 / 3,
+                        'trade/orders-pending' => 1,
+                        'trade/orders-history' => 0.5,
+                        'trade/orders-history-archive' => 1,
+                        'trade/fills' => 1 / 3,
+                        'trade/fills-history' => 2,
+                        'trade/orders-algo-pending' => 1,
+                        'trade/orders-algo-history' => 1,
+                        'account/subaccount/balances' => 10,
+                        'asset/subaccount/bills' => 5 / 3,
+                        'users/subaccount/list' => 10,
                     ),
                     'post' => array(
-                        'account/set-position-mode',
-                        'account/set-leverage',
-                        'account/position/margin-balance',
-                        'account/set-greeks',
-                        'asset/transfer',
-                        'asset/withdrawal',
-                        'asset/purchase_redempt',
-                        'trade/order',
-                        'trade/batch-orders',
-                        'trade/cancel-order',
-                        'trade/cancel-batch-orders',
-                        'trade/amend-order',
-                        'trade/amend-batch-orders',
-                        'trade/close-position',
-                        'trade/order-algo',
-                        'trade/cancel-algos',
-                        'users/subaccount/delete-apikey',
-                        'users/subaccount/modify-apikey',
-                        'users/subaccount/apikey',
-                        'asset/subaccount/transfer',
+                        'account/set-position-mode' => 4,
+                        'account/set-leverage' => 1,
+                        'account/position/margin-balance' => 1,
+                        'account/set-greeks' => 4,
+                        'asset/transfer' => 10,
+                        'asset/withdrawal' => 5 / 3,
+                        'asset/purchase_redempt' => 5 / 3,
+                        'trade/order' => 1 / 3,
+                        'trade/batch-orders' => 1 / 15,
+                        'trade/cancel-order' => 1 / 3,
+                        'trade/cancel-batch-orders' => 1 / 15,
+                        'trade/amend-order' => 1 / 3,
+                        'trade/amend-batch-orders' => 1 / 3,
+                        'trade/close-position' => 1,
+                        'trade/order-algo' => 1,
+                        'trade/cancel-algos' => 1,
+                        'trade/cancel-advance-algos' => 1,
+                        'users/subaccount/delete-apikey' => 10,
+                        'users/subaccount/modify-apikey' => 10,
+                        'users/subaccount/apikey' => 10,
+                        'asset/subaccount/transfer' => 10,
                     ),
                 ),
             ),
@@ -482,9 +487,16 @@ class okex extends Exchange {
             ),
             'precisionMode' => TICK_SIZE,
             'options' => array(
+                'defaultNetwork' => 'ERC20',
+                'networks' => array(
+                    'ETH' => 'ERC20',
+                    'TRX' => 'TRC20',
+                    'OMNI' => 'Omni',
+                ),
                 'fetchOHLCV' => array(
                     'type' => 'Candles', // Candles or HistoryCandles, IndexCandles, MarkPriceCandles
                 ),
+                'createOrder' => 'privatePostTradeBatchOrders', // or 'privatePostTradeOrder'
                 'createMarketBuyOrderRequiresPrice' => true,
                 'fetchMarkets' => array( 'spot', 'futures', 'swap' ), // spot, futures, swap, option
                 'defaultType' => 'spot', // 'funding', 'spot', 'margin', 'futures', 'swap', 'option'
@@ -751,7 +763,23 @@ class okex extends Exchange {
         return $this->parse_markets($data);
     }
 
+    public function safe_network($networkId) {
+        $networksById = array(
+            'Bitcoin' => 'BTC',
+            'Omni' => 'OMNI',
+            'TRON' => 'TRC20',
+        );
+        return $this->safe_string($networksById, $networkId, $networkId);
+    }
+
     public function fetch_currencies($params = array ()) {
+        // this endpoint requires authentication
+        // while fetchCurrencies is a public API method by design
+        // therefore we check the keys here
+        // and fallback to generating the currencies from the markets
+        if (!$this->check_required_credentials(false)) {
+            return null;
+        }
         // has['fetchCurrencies'] is currently set to false
         // it will reply with array("msg":"Request header “OK_ACCESS_KEY“ can't be empty.","$code":"50103")
         // if you attempt to access it without authentication
@@ -765,11 +793,11 @@ class okex extends Exchange {
         //                 "$canInternal":true,
         //                 "canWd":true,
         //                 "ccy":"USDT",
-        //                 "chain":"USDT-ERC20",
+        //                 "$chain":"USDT-ERC20",
         //                 "maxFee":"40",
         //                 "minFee":"20",
         //                 "minWd":"2",
-        //                 "$name":""
+        //                 "name":""
         //             }
         //         ),
         //         "msg":""
@@ -779,37 +807,55 @@ class okex extends Exchange {
         $result = array();
         $dataByCurrencyId = $this->group_by($data, 'ccy');
         $currencyIds = is_array($dataByCurrencyId) ? array_keys($dataByCurrencyId) : array();
+        $precision = $this->parse_number('0.00000001'); // default $precision, todo => fix "magic constants"
         for ($i = 0; $i < count($currencyIds); $i++) {
             $currencyId = $currencyIds[$i];
+            $code = $this->safe_currency_code($currencyId);
             $chains = $dataByCurrencyId[$currencyId];
-            $first = $this->safe_value($chains, 0);
-            $id = $this->safe_string($first, 'ccy');
-            $code = $this->safe_currency_code($id);
-            $precision = 0.00000001; // default $precision, todo => fix "magic constants"
-            $name = $this->safe_string($first, 'name');
-            if (($name !== null) && (strlen($name) < 1)) {
-                $name = null;
+            $networks = array();
+            $currencyActive = false;
+            for ($j = 0; $j < count($chains); $j++) {
+                $chain = $chains[$j];
+                $canDeposit = $this->safe_value($chain, 'canDep');
+                $canWithdraw = $this->safe_value($chain, 'canWd');
+                $canInternal = $this->safe_value($chain, 'canInternal');
+                $active = ($canDeposit && $canWithdraw && $canInternal) ? true : false;
+                $currencyActive = $currencyActive || $active;
+                $networkId = $this->safe_string($chain, 'chain');
+                if (mb_strpos($networkId, '-') !== false) {
+                    $parts = explode('-', $networkId);
+                    $networkId = $this->safe_string($parts, 1, $networkId);
+                    $network = $this->safe_network($networkId);
+                    $networks[$network] = array(
+                        'info' => $chain,
+                        'id' => $networkId,
+                        'network' => $network,
+                        'active' => $active,
+                        'fee' => $this->safe_number($chain, 'minFee'),
+                        'precision' => null,
+                        'limits' => array(
+                            'withdraw' => array(
+                                'min' => $this->safe_number($chain, 'minWd'),
+                                'max' => null,
+                            ),
+                        ),
+                    );
+                }
             }
-            $canDeposit = $this->safe_value($first, 'canDep');
-            $canWithdraw = $this->safe_value($first, 'canWd');
-            $canInternal = $this->safe_value($first, 'canInternal');
-            $active = ($canDeposit && $canWithdraw && $canInternal) ? true : false;
             $result[$code] = array(
-                'id' => $id,
                 'code' => $code,
-                'info' => $chains,
-                'type' => null,
-                'name' => $name,
-                'active' => $active,
-                'fee' => $this->safe_number($first, 'minFee'),
+                'id' => $currencyId,
+                'name' => null,
+                'active' => $currencyActive,
+                'fee' => null,
                 'precision' => $precision,
                 'limits' => array(
-                    'amount' => array( 'min' => null, 'max' => null ),
-                    'withdraw' => array(
-                        'min' => $this->safe_number($first, 'ccy'),
+                    'amount' => array(
+                        'min' => null,
                         'max' => null,
                     ),
                 ),
+                'networks' => $networks,
             );
         }
         return $result;
@@ -1126,6 +1172,8 @@ class okex extends Exchange {
     public function fetch_ohlcv($symbol, $timeframe = '1m', $since = null, $limit = null, $params = array ()) {
         yield $this->load_markets();
         $market = $this->market($symbol);
+        $price = $this->safe_string($params, 'price');
+        $params = $this->omit($params, 'price');
         $request = array(
             'instId' => $market['id'],
             'bar' => $this->timeframes[$timeframe],
@@ -1138,6 +1186,11 @@ class okex extends Exchange {
         $type = $this->safe_string($params, 'type', $defaultType);
         $params = $this->omit($params, 'type');
         $method = 'publicGetMarket' . $type;
+        if ($price === 'mark') {
+            $method = 'publicGetMarketMarkPriceCandles';
+        } else if ($price === 'index') {
+            $method = 'publicGetMarketIndexCandles';
+        }
         if ($since !== null) {
             $request['before'] = $since - 1;
         }
@@ -1155,6 +1208,20 @@ class okex extends Exchange {
         //
         $data = $this->safe_value($response, 'data', array());
         return $this->parse_ohlcvs($data, $market, $timeframe, $since, $limit);
+    }
+
+    public function fetch_index_ohlcv($symbol, $timeframe = '1m', $since = null, $limit = null, $params = array ()) {
+        $request = array(
+            'price' => 'index',
+        );
+        return yield $this->fetch_ohlcv($symbol, $timeframe, $since, $limit, array_merge($request, $params));
+    }
+
+    public function fetch_mark_ohlcv($symbol, $timeframe = '1m', $since = null, $limit = null, $params = array ()) {
+        $request = array(
+            'price' => 'mark',
+        );
+        return yield $this->fetch_ohlcv($symbol, $timeframe, $since, $limit, array_merge($request, $params));
     }
 
     public function parse_balance_by_type($type, $response) {
@@ -1414,7 +1481,19 @@ class okex extends Exchange {
             $request['px'] = $this->price_to_precision($symbol, $price);
             $request['sz'] = $this->amount_to_precision($symbol, $amount);
         }
-        $response = yield $this->privatePostTradeOrder (array_merge($request, $params));
+        $extendedRequest = null;
+        $defaultMethod = $this->safe_string($this->options, 'createOrder', 'privatePostTradeBatchOrders'); // or privatePostTradeOrder
+        if ($defaultMethod === 'privatePostTradeOrder') {
+            $extendedRequest = array_merge($request, $params);
+        } else if ($defaultMethod === 'privatePostTradeBatchOrders') {
+            // keep the $request body the same
+            // submit a single $order in an array to the batch $order endpoint
+            // because it has a lower ratelimit
+            $extendedRequest = array( array_merge($request, $params) );
+        } else {
+            throw new ExchangeError($this->id . ' $this->options["createOrder"] must be either privatePostTradeBatchOrders or privatePostTradeOrder');
+        }
+        $response = yield $this->$defaultMethod ($extendedRequest);
         //
         //     {
         //         "code" => "0",
@@ -1730,7 +1809,7 @@ class okex extends Exchange {
     public function fetch_closed_orders($symbol = null, $since = null, $limit = null, $params = array ()) {
         yield $this->load_markets();
         $defaultType = $this->safe_string($this->options, 'defaultType');
-        $options = $this->safe_string($this->options, 'fetchClosedOrders', array());
+        $options = $this->safe_value($this->options, 'fetchClosedOrders', array());
         $type = $this->safe_string($options, 'type', $defaultType);
         $type = $this->safe_string($params, 'type', $type);
         $params = $this->omit($params, 'type');
@@ -2111,24 +2190,40 @@ class okex extends Exchange {
         //         "selected":true
         //     }
         //
+        //     {
+        //       "$chain" => "ETH-OKExChain",
+        //       "ctAddr" => "72315c",
+        //       "ccy" => "ETH",
+        //       "to" => "6",
+        //       "addr" => "0x1c9f2244d1ccaa060bd536827c18925db10db102",
+        //       "selected" => true
+        //     }
+        //
         $address = $this->safe_string($depositAddress, 'addr');
         $tag = $this->safe_string_2($depositAddress, 'tag', 'pmtId');
         $tag = $this->safe_string($depositAddress, 'memo', $tag);
         $currencyId = $this->safe_string($depositAddress, 'ccy');
         $code = $this->safe_currency_code($currencyId);
+        $chain = $this->safe_string($depositAddress, 'chain');
+        $network = null;
+        if (mb_strpos($chain, '-') > -1) {
+            $parts = explode('-', $chain);
+            $networkId = $this->safe_string($parts, 1);
+            $network = $this->safe_network($networkId);
+        }
         $this->check_address($address);
         return array(
             'currency' => $code,
             'address' => $address,
             'tag' => $tag,
+            'network' => $network,
             'info' => $depositAddress,
         );
     }
 
-    public function fetch_deposit_address($code, $params = array ()) {
+    public function fetch_deposit_addresses_by_network($code, $params = array ()) {
         yield $this->load_markets();
-        $parts = explode('-', $code);
-        $currency = $this->currency($parts[0]);
+        $currency = $this->currency($code);
         $request = array(
             'ccy' => $currency['id'],
         );
@@ -2155,15 +2250,45 @@ class okex extends Exchange {
         //     }
         //
         $data = $this->safe_value($response, 'data', array());
-        $addressesByCode = $this->parse_deposit_addresses($data);
-        $address = $this->safe_value($addressesByCode, $code);
-        if ($address === null) {
-            throw new InvalidAddress($this->id . ' fetchDepositAddress cannot return nonexistent addresses, you should create withdrawal addresses with the exchange website first');
+        $filtered = $this->filter_by($data, 'selected', true);
+        $parsed = $this->parse_deposit_addresses($filtered, array( $code ), false);
+        return $this->index_by($parsed, 'network');
+    }
+
+    public function fetch_deposit_address($code, $params = array ()) {
+        $response = yield $this->fetch_deposit_addresses_by_network($code, $params);
+        $rawNetwork = $this->safe_string($params, 'network');
+        $networks = $this->safe_value($this->options, 'networks', array());
+        $network = $this->safe_string($networks, $rawNetwork, $rawNetwork);
+        $result = null;
+        if ($network === null) {
+            $result = $this->safe_value($response, $code);
+            if ($result === null) {
+                $alias = $this->safe_string($networks, $code, $code);
+                $result = $this->safe_value($response, $alias);
+                if ($result === null) {
+                    $defaultNetwork = $this->safe_string($this->options, 'defaultNetwork', 'ERC20');
+                    $result = $this->safe_value($response, $defaultNetwork);
+                    if ($result === null) {
+                        $values = is_array($response) ? array_values($response) : array();
+                        $result = $this->safe_value($values, 0);
+                        if ($result === null) {
+                            throw new InvalidAddress($this->id . ' fetchDepositAddress() cannot find deposit address for ' . $code);
+                        }
+                    }
+                }
+            }
+            return $result;
         }
-        return $address;
+        $result = $this->safe_value($response, $network);
+        if ($result === null) {
+            throw new InvalidAddress($this->id . ' fetchDepositAddress() cannot find ' . $network . ' deposit address for ' . $code);
+        }
+        return $result;
     }
 
     public function withdraw($code, $amount, $address, $tag = null, $params = array ()) {
+        list($tag, $params) = $this->handle_withdraw_tag_and_params($tag, $params);
         $this->check_address($address);
         yield $this->load_markets();
         $currency = $this->currency($code);
@@ -2172,7 +2297,7 @@ class okex extends Exchange {
         }
         $fee = $this->safe_string($params, 'fee');
         if ($fee === null) {
-            throw new ArgumentsRequired($this->id . " withdraw() requires a `$fee` string parameter, network $transaction $fee must be ≥ 0. Withdrawals to OKCoin or OKEx are $fee-free, please set '0'. Withdrawing to external digital asset $address requires network $transaction $fee->");
+            throw new ArgumentsRequired($this->id . " withdraw() requires a 'fee' string parameter, $network $transaction $fee must be ≥ 0. Withdrawals to OKCoin or OKEx are $fee-free, please set '0'. Withdrawing to external digital asset $address requires $network $transaction $fee->");
         }
         $request = array(
             'ccy' => $currency['id'],
@@ -2185,6 +2310,13 @@ class okex extends Exchange {
             $request['pwd'] = $params['password'];
         } else if (is_array($params) && array_key_exists('pwd', $params)) {
             $request['pwd'] = $params['pwd'];
+        }
+        $networks = $this->safe_value($this->options, 'networks', array());
+        $network = $this->safe_string_upper($params, 'network'); // this line allows the user to specify either ERC20 or ETH
+        $network = $this->safe_string($networks, $network, $network); // handle ETH>ERC20 alias
+        if ($network !== null) {
+            $request['chain'] = $currency['id'] . '-' . $network;
+            $params = $this->omit($params, 'network');
         }
         $query = $this->omit($params, array( 'fee', 'password', 'pwd' ));
         if (!(is_array($request) && array_key_exists('pwd', $request))) {
@@ -2466,7 +2598,7 @@ class okex extends Exchange {
         $request = array(
             // instType String No Instrument $type, MARGIN, SWAP, FUTURES, OPTION
             'instId' => $market['id'],
-            // posId String No Single position ID or multiple position IDs (no more than 20) separated with comma
+            // posId String No Single $position ID or multiple $position IDs (no more than 20) separated with comma
         );
         if ($type !== null) {
             $request['instType'] = strtoupper($type);
@@ -2520,7 +2652,11 @@ class okex extends Exchange {
         //     }
         //
         $data = $this->safe_value($response, 'data', array());
-        return $this->parse_position($this->safe_value($data, 0));
+        $position = $this->safe_value($data, 0);
+        if ($position === null) {
+            return $position;
+        }
+        return $this->parse_position($position);
     }
 
     public function fetch_positions($symbols = null, $params = array ()) {
