@@ -86,6 +86,7 @@ class Exchange {
         'bitmart',
         'bitmex',
         'bitpanda',
+        'bitrue',
         'bitso',
         'bitstamp',
         'bitstamp1',
