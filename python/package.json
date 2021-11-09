@@ -50,7 +50,11 @@
     "postinstall": "node postinstall"
   },
   "types": "./ccxt.d.ts",
-  "dependencies": {},
+  "dependencies": {
+    "ccxt": "^1.60.82",
+    "dotenv": "^10.0.0",
+    "utils": "^0.3.1"
+  },
   "devDependencies": {
     "ansicolor": "1.1.81",
     "as-table": "1.0.37",
