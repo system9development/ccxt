@@ -4,7 +4,7 @@ import os
 
 dotenv.load_dotenv()
 
-# Why does JS CCXT have bitrue module but python ccxt doesn't. I thought the JS transpiled into python??
+# Will use this file later to test transpiled new fetchOrders along with new DB operations for order insertion
 exchange = ccxt.bitrue({
     'apiKey': os.environ['BITRUE_KEY'],
     'secret': os.environ['BITRUE_SECRET'],
