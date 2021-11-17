@@ -386,7 +386,7 @@ class bitrue(Exchange):
         market = self.market(symbol)
         request = {
             'symbol': market['id'],
-        }
+        } 
         if limit is not None:
             request['limit'] = limit
         if since is not None:
