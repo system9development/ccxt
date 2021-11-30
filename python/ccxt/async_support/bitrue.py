@@ -47,7 +47,7 @@ class bitrue(Exchange):
                 'fetchOrder': True,
                 'fetchOrders': True,
                 'fetchOpenOrders': True,
-                'fetchClosedOrders': False,
+                'fetchClosedOrders': True,
                 'fetchBalance': True,
                 'createMarketOrder': True,
                 'createOrder': True,
@@ -378,6 +378,27 @@ class bitrue(Exchange):
         response = await self.privateGetOpenOrders(self.extend(request, params))
         orders = response if isinstance(response, list) else []
         return self.parse_orders(orders, market)
+
+    async def fetch_closed_orders(self, symbol):
+        if symbol is None:
+            raise ArgumentsRequired(self.id + ' cancelOrder() requires a symbol argument')
+        await self.load_markets()
+        exchangeSymbol = self.market_id(symbol)
+        allTrades = []
+        since = self.parse8601('2015-01-01T00:00:00Z')
+        moreOrders = True
+        while(moreOrders) {
+            orders = await self.fetch_trades(exchangeSymbol, since)
+            if allTrades['length'] > 0:
+                if orders[orders['length'] - 1]['id'] == allTrades[allTrades['length'] - 1]['id']:
+                    moreOrders = False
+                    continue
+            # Param is not inclusive in self method, so on each iteration we store every order from the orders query
+            for j in range(0, orders['length'] - 1):
+                order = self.parse_order(orders[j], exchangeSymbol)
+                allTrades.append(order)
+            since = allTrades[allTrades['length'] - 1]['timestamp']
+        return allTrades
 
     async def fetch_orders(self, symbol=None, since=None, limit=None, params={}):
         if symbol is None:

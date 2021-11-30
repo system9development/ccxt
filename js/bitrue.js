@@ -39,7 +39,7 @@ module.exports = class bitrue extends Exchange {
                 'fetchOrder': true,
                 'fetchOrders': true,
                 'fetchOpenOrders': true,
-                'fetchClosedOrders': false,
+                'fetchClosedOrders': true,
                 'fetchBalance': true,
                 'createMarketOrder': true,
                 'createOrder': true,
@@ -405,6 +405,33 @@ module.exports = class bitrue extends Exchange {
         const response = await this.privateGetOpenOrders (this.extend (request, params));
         const orders = Array.isArray (response) ? response : [];
         return this.parseOrders (orders, market);
+    }
+
+    async fetchClosedOrders (symbol) {
+        if (symbol === undefined) {
+            throw new ArgumentsRequired (this.id + ' cancelOrder() requires a symbol argument');
+        }
+        await this.loadMarkets ();
+        const exchangeSymbol = this.marketId (symbol);
+        const allTrades = [];
+        let since = this.parse8601 ('2015-01-01T00:00:00Z');
+        let moreOrders = true;
+        while (moreOrders) {
+            const orders = await this.fetchTrades (exchangeSymbol, since);
+            if (allTrades['length'] > 0) {
+                if (orders[orders['length'] - 1]['id'] === allTrades[allTrades['length'] - 1]['id']) {
+                    moreOrders = false;
+                    continue;
+                }
+            }
+            // Param is not inclusive in this method, so on each iteration we store every order from the orders query
+            for (let j = 0; j < orders['length'] - 1; j++) {
+                const order = this.parseOrder (orders[j], exchangeSymbol);
+                allTrades.push (order);
+            }
+            since = allTrades[allTrades['length'] - 1]['timestamp'];
+        }
+        return allTrades;
     }
 
     async fetchOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {

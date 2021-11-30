@@ -43,7 +43,7 @@ class bitrue extends Exchange {
                 'fetchOrder' => true,
                 'fetchOrders' => true,
                 'fetchOpenOrders' => true,
-                'fetchClosedOrders' => false,
+                'fetchClosedOrders' => true,
                 'fetchBalance' => true,
                 'createMarketOrder' => true,
                 'createOrder' => true,
@@ -409,6 +409,33 @@ class bitrue extends Exchange {
         $response = yield $this->privateGetOpenOrders (array_merge($request, $params));
         $orders = gettype($response) === 'array' && count(array_filter(array_keys($response), 'is_string')) == 0 ? $response : array();
         return $this->parse_orders($orders, $market);
+    }
+
+    public function fetch_closed_orders($symbol) {
+        if ($symbol === null) {
+            throw new ArgumentsRequired($this->id . ' cancelOrder() requires a $symbol argument');
+        }
+        yield $this->load_markets();
+        $exchangeSymbol = $this->market_id($symbol);
+        $allTrades = array();
+        $since = $this->parse8601('2015-01-01T00:00:00Z');
+        $moreOrders = true;
+        while ($moreOrders) {
+            $orders = yield $this->fetch_trades($exchangeSymbol, $since);
+            if ($allTrades['length'] > 0) {
+                if ($orders[orders['length'] - 1]['id'] === $allTrades[allTrades['length'] - 1]['id']) {
+                    $moreOrders = false;
+                    continue;
+                }
+            }
+            // Param is not inclusive in this method, so on each iteration we store every $order from the $orders query
+            for ($j = 0; $j < $orders['length'] - 1; $j++) {
+                $order = $this->parse_order($orders[$j], $exchangeSymbol);
+                $allTrades[] = $order;
+            }
+            $since = $allTrades[allTrades['length'] - 1]['timestamp'];
+        }
+        return $allTrades;
     }
 
     public function fetch_orders($symbol = null, $since = null, $limit = null, $params = array ()) {
