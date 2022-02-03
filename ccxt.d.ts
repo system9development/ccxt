@@ -576,6 +576,7 @@ declare module 'ccxt' {
         | 'binanceus'
         | 'binanceusdm'
         | 'bit2c'
+        | 'bitazza'
         | 'bitbank'
         | 'bitbay'
         | 'bitbns'
