@@ -1409,7 +1409,7 @@ class tokocrypto extends Exchange {
         if ($this->options['adjustForTimeDifference']) {
             $this->load_time_difference();
         }
-        $markets = $this->safe_value($response, 'data', array());
+        $markets = $this->safe_value($this->safe_value($response, 'data', null), 'list', array());
         $result = array();
         for ($i = 0; $i < count($markets); $i++) {
             $market = $markets[$i];
@@ -1418,25 +1418,13 @@ class tokocrypto extends Exchange {
             $lowercaseId = $this->safe_string_lower($market, 'symbol');
             $baseId = $this->safe_string($market, 'baseAsset');
             $quoteId = $this->safe_string($market, 'quoteAsset');
-            $settleId = $this->safe_string($market, 'marginAsset');
             $base = $this->safe_currency_code($baseId);
             $quote = $this->safe_currency_code($quoteId);
-            $settle = $this->safe_currency_code($settleId);
-            $contract = false;
-            $contractType = $this->safe_string($market, 'contractType');
-            $idSymbol = $contract && ($contractType !== 'PERPETUAL');
-            $symbol = null;
             $expiry = null;
-            if ($idSymbol) {
-                $symbol = $id;
-                $expiry = $this->safe_integer($market, 'deliveryDate');
-            } else {
-                $symbol = $base . '/' . $quote;
-            }
+            $symbol = $base . '/' . $quote;
             $filters = $this->safe_value($market, 'filters', array());
             $filtersByType = $this->index_by($filters, 'filterType');
             $status = $this->safe_string_2($market, 'status', 'contractStatus');
-            $contractSize = null;
             $fees = $this->fees;
             // $isMarginTradingAllowed = $this->safe_value($market, 'isMarginTradingAllowed', false);
             $isMarginTradingAllowed = false;
@@ -1446,10 +1434,8 @@ class tokocrypto extends Exchange {
                 'symbol' => $symbol,
                 'base' => $base,
                 'quote' => $quote,
-                'settle' => $settle,
                 'baseId' => $baseId,
                 'quoteId' => $quoteId,
-                'settleId' => $settleId,
                 'type' => $type,
                 'spot' => $spot,
                 'margin' => $spot && $isMarginTradingAllowed,
@@ -1462,7 +1448,7 @@ class tokocrypto extends Exchange {
                 'inverse' => null,
                 'taker' => $fees['trading']['taker'],
                 'maker' => $fees['trading']['maker'],
-                'contractSize' => $contractSize,
+                'contractSize' => null,
                 'expiry' => $expiry,
                 'expiryDatetime' => $this->iso8601($expiry),
                 'strike' => null,

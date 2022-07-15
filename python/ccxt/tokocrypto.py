@@ -1407,7 +1407,7 @@ class tokocrypto(Exchange):
         #
         if self.options['adjustForTimeDifference']:
             self.load_time_difference()
-        markets = self.safe_value(response, 'data', [])
+        markets = self.safe_value(self.safe_value(response, 'data', None), 'list', [])
         result = []
         for i in range(0, len(markets)):
             market = markets[i]
@@ -1416,24 +1416,13 @@ class tokocrypto(Exchange):
             lowercaseId = self.safe_string_lower(market, 'symbol')
             baseId = self.safe_string(market, 'baseAsset')
             quoteId = self.safe_string(market, 'quoteAsset')
-            settleId = self.safe_string(market, 'marginAsset')
             base = self.safe_currency_code(baseId)
             quote = self.safe_currency_code(quoteId)
-            settle = self.safe_currency_code(settleId)
-            contract = False
-            contractType = self.safe_string(market, 'contractType')
-            idSymbol = contract and (contractType != 'PERPETUAL')
-            symbol = None
             expiry = None
-            if idSymbol:
-                symbol = id
-                expiry = self.safe_integer(market, 'deliveryDate')
-            else:
-                symbol = base + '/' + quote
+            symbol = base + '/' + quote
             filters = self.safe_value(market, 'filters', [])
             filtersByType = self.index_by(filters, 'filterType')
             status = self.safe_string_2(market, 'status', 'contractStatus')
-            contractSize = None
             fees = self.fees
             # isMarginTradingAllowed = self.safe_value(market, 'isMarginTradingAllowed', False)
             isMarginTradingAllowed = False
@@ -1443,10 +1432,8 @@ class tokocrypto(Exchange):
                 'symbol': symbol,
                 'base': base,
                 'quote': quote,
-                'settle': settle,
                 'baseId': baseId,
                 'quoteId': quoteId,
-                'settleId': settleId,
                 'type': type,
                 'spot': spot,
                 'margin': spot and isMarginTradingAllowed,
@@ -1459,7 +1446,7 @@ class tokocrypto(Exchange):
                 'inverse': None,
                 'taker': fees['trading']['taker'],
                 'maker': fees['trading']['maker'],
-                'contractSize': contractSize,
+                'contractSize': None,
                 'expiry': expiry,
                 'expiryDatetime': self.iso8601(expiry),
                 'strike': None,
