@@ -1430,10 +1430,10 @@ module.exports = class tokocrypto extends Exchange {
             const filters = this.safeValue (market, 'filters', []);
             const filtersByType = this.indexBy (filters, 'filterType');
             const status = this.safeString2 (market, 'status', 'contractStatus');
-            let contractSize = undefined;
-            let fees = this.fees;
+            const contractSize = undefined;
+            const fees = this.fees;
             // const isMarginTradingAllowed = this.safeValue (market, 'isMarginTradingAllowed', false);
-            const isMarginTradingAllowed = false
+            const isMarginTradingAllowed = false;
             const entry = {
                 'id': id,
                 'lowercaseId': lowercaseId,
@@ -1447,13 +1447,13 @@ module.exports = class tokocrypto extends Exchange {
                 'type': type,
                 'spot': spot,
                 'margin': spot && isMarginTradingAllowed,
-                'future': future,
-                'delivery': delivery,
+                'future': false,
+                'delivery': false,
                 'option': false,
                 'active': (status === 'TRADING'),
-                'contract': contract,
-                'linear': contract ? future : undefined,
-                'inverse': contract ? delivery : undefined,
+                'contract': false,
+                'linear': undefined,
+                'inverse': undefined,
                 'taker': fees['trading']['taker'],
                 'maker': fees['trading']['maker'],
                 'contractSize': contractSize,
@@ -1533,7 +1533,7 @@ module.exports = class tokocrypto extends Exchange {
         let timestamp = undefined;
         if ((type === 'spot') || (type === 'margin')) {
             timestamp = this.safeInteger (response, 'updateTime');
-            const balances = this.safeValue ( this.safeValue (response, 'data', undefined), 'accountAssets', []);
+            const balances = this.safeValue (this.safeValue (response, 'data', undefined), 'accountAssets', []);
             for (let i = 0; i < balances.length; i++) {
                 const balance = balances[i];
                 const currencyId = this.safeString (balance, 'asset');
