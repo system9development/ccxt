@@ -1403,7 +1403,7 @@ module.exports = class tokocrypto extends Exchange {
         if (this.options['adjustForTimeDifference']) {
             await this.loadTimeDifference ();
         }
-        const markets = this.safeValue (response, 'data', []);
+        const markets = this.safeValue (this.safeValue (response, 'data', undefined), 'list', []);
         const result = [];
         for (let i = 0; i < markets.length; i++) {
             const market = markets[i];
@@ -1412,25 +1412,13 @@ module.exports = class tokocrypto extends Exchange {
             const lowercaseId = this.safeStringLower (market, 'symbol');
             const baseId = this.safeString (market, 'baseAsset');
             const quoteId = this.safeString (market, 'quoteAsset');
-            const settleId = this.safeString (market, 'marginAsset');
             const base = this.safeCurrencyCode (baseId);
             const quote = this.safeCurrencyCode (quoteId);
-            const settle = this.safeCurrencyCode (settleId);
-            const contract = false;
-            const contractType = this.safeString (market, 'contractType');
-            const idSymbol = contract && (contractType !== 'PERPETUAL');
-            let symbol = undefined;
-            let expiry = undefined;
-            if (idSymbol) {
-                symbol = id;
-                expiry = this.safeInteger (market, 'deliveryDate');
-            } else {
-                symbol = base + '/' + quote;
-            }
+            const expiry = undefined;
+            const symbol = base + '/' + quote;
             const filters = this.safeValue (market, 'filters', []);
             const filtersByType = this.indexBy (filters, 'filterType');
             const status = this.safeString2 (market, 'status', 'contractStatus');
-            const contractSize = undefined;
             const fees = this.fees;
             // const isMarginTradingAllowed = this.safeValue (market, 'isMarginTradingAllowed', false);
             const isMarginTradingAllowed = false;
@@ -1440,10 +1428,8 @@ module.exports = class tokocrypto extends Exchange {
                 'symbol': symbol,
                 'base': base,
                 'quote': quote,
-                'settle': settle,
                 'baseId': baseId,
                 'quoteId': quoteId,
-                'settleId': settleId,
                 'type': type,
                 'spot': spot,
                 'margin': spot && isMarginTradingAllowed,
@@ -1456,7 +1442,7 @@ module.exports = class tokocrypto extends Exchange {
                 'inverse': undefined,
                 'taker': fees['trading']['taker'],
                 'maker': fees['trading']['maker'],
-                'contractSize': contractSize,
+                'contractSize': undefined,
                 'expiry': expiry,
                 'expiryDatetime': this.iso8601 (expiry),
                 'strike': undefined,
