@@ -79,6 +79,7 @@ from ccxt.binancecoinm import binancecoinm                  # noqa: F401
 from ccxt.binanceus import binanceus                        # noqa: F401
 from ccxt.binanceusdm import binanceusdm                    # noqa: F401
 from ccxt.bit2c import bit2c                                # noqa: F401
+from ccxt.bitazza import bitazza                            # noqa: F401
 from ccxt.bitbank import bitbank                            # noqa: F401
 from ccxt.bitbay import bitbay                              # noqa: F401
 from ccxt.bitbns import bitbns                              # noqa: F401
@@ -175,6 +176,7 @@ from ccxt.therock import therock                            # noqa: F401
 from ccxt.tidebit import tidebit                            # noqa: F401
 from ccxt.tidex import tidex                                # noqa: F401
 from ccxt.timex import timex                                # noqa: F401
+from ccxt.tokocrypto import tokocrypto                      # noqa: F401
 from ccxt.upbit import upbit                                # noqa: F401
 from ccxt.vcc import vcc                                    # noqa: F401
 from ccxt.wavesexchange import wavesexchange                # noqa: F401
@@ -199,6 +201,7 @@ exchanges = [
     'binanceus',
     'binanceusdm',
     'bit2c',
+    'bitazza',
     'bitbank',
     'bitbay',
     'bitbns',
@@ -295,6 +298,7 @@ exchanges = [
     'tidebit',
     'tidex',
     'timex',
+    'tokocrypto',
     'upbit',
     'vcc',
     'wavesexchange',

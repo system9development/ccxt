@@ -454,7 +454,7 @@ declare module 'ccxt' {
     export class binanceus extends binance {}
     export class binanceusdm extends binance {}
     export class bit2c extends Exchange {}
-    export class bitazza extends Exchange {}
+    export class bitazza extends ndax {}
     export class bitbank extends Exchange {}
     export class bitbay extends zonda {}
     export class bitbns extends Exchange {}
@@ -551,6 +551,7 @@ declare module 'ccxt' {
     export class tidebit extends Exchange {}
     export class tidex extends Exchange {}
     export class timex extends Exchange {}
+    export class tokocrypto extends Exchange {}
     export class upbit extends Exchange {}
     export class vcc extends Exchange {}
     export class wavesexchange extends Exchange {}
@@ -674,6 +675,7 @@ declare module 'ccxt' {
         | 'tidebit'
         | 'tidex'
         | 'timex'
+        | 'tokocrypto'
         | 'upbit'
         | 'vcc'
         | 'wavesexchange'

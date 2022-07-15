@@ -61,6 +61,7 @@ from ccxt.async_support.binancecoinm import binancecoinm                  # noqa
 from ccxt.async_support.binanceus import binanceus                        # noqa: F401
 from ccxt.async_support.binanceusdm import binanceusdm                    # noqa: F401
 from ccxt.async_support.bit2c import bit2c                                # noqa: F401
+from ccxt.async_support.bitazza import bitazza                            # noqa: F401
 from ccxt.async_support.bitbank import bitbank                            # noqa: F401
 from ccxt.async_support.bitbay import bitbay                              # noqa: F401
 from ccxt.async_support.bitbns import bitbns                              # noqa: F401
@@ -157,6 +158,7 @@ from ccxt.async_support.therock import therock                            # noqa
 from ccxt.async_support.tidebit import tidebit                            # noqa: F401
 from ccxt.async_support.tidex import tidex                                # noqa: F401
 from ccxt.async_support.timex import timex                                # noqa: F401
+from ccxt.async_support.tokocrypto import tokocrypto                      # noqa: F401
 from ccxt.async_support.upbit import upbit                                # noqa: F401
 from ccxt.async_support.vcc import vcc                                    # noqa: F401
 from ccxt.async_support.wavesexchange import wavesexchange                # noqa: F401
@@ -181,6 +183,7 @@ exchanges = [
     'binanceus',
     'binanceusdm',
     'bit2c',
+    'bitazza',
     'bitbank',
     'bitbay',
     'bitbns',
@@ -277,6 +280,7 @@ exchanges = [
     'tidebit',
     'tidex',
     'timex',
+    'tokocrypto',
     'upbit',
     'vcc',
     'wavesexchange',
