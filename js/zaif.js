@@ -4,6 +4,7 @@
 
 const Exchange = require ('./base/Exchange');
 const { ExchangeError, BadRequest } = require ('./base/errors');
+const { TICK_SIZE } = require ('./base/functions/number');
 const Precise = require ('./base/Precise');
 
 //  ---------------------------------------------------------------------------
@@ -14,7 +15,8 @@ module.exports = class zaif extends Exchange {
             'id': 'zaif',
             'name': 'Zaif',
             'countries': [ 'JP' ],
-            'rateLimit': 2000,
+            // 10 requests per second = 1000ms / 10 = 100ms between requests (public market endpoints)
+            'rateLimit': 100,
             'version': '1',
             'has': {
                 'CORS': undefined,
@@ -35,16 +37,21 @@ module.exports = class zaif extends Exchange {
                 'fetchIndexOHLCV': false,
                 'fetchMarkets': true,
                 'fetchMarkOHLCV': false,
+                'fetchOpenInterestHistory': false,
                 'fetchOpenOrders': true,
                 'fetchOrderBook': true,
                 'fetchPremiumIndexOHLCV': false,
                 'fetchTicker': true,
                 'fetchTrades': true,
+                'fetchTradingFee': false,
+                'fetchTradingFees': false,
                 'withdraw': true,
             },
             'urls': {
                 'logo': 'https://user-images.githubusercontent.com/1294454/27766927-39ca2ada-5eeb-11e7-972f-1b4199518ca6.jpg',
-                'api': 'https://api.zaif.jp',
+                'api': {
+                    'rest': 'https://api.zaif.jp',
+                },
                 'www': 'https://zaif.jp',
                 'doc': [
                     'https://techbureau-api-document.readthedocs.io/ja/latest/index.html',
@@ -64,70 +71,71 @@ module.exports = class zaif extends Exchange {
             },
             'api': {
                 'public': {
-                    'get': [
-                        'depth/{pair}',
-                        'currencies/{pair}',
-                        'currencies/all',
-                        'currency_pairs/{pair}',
-                        'currency_pairs/all',
-                        'last_price/{pair}',
-                        'ticker/{pair}',
-                        'trades/{pair}',
-                    ],
+                    'get': {
+                        'depth/{pair}': 1,
+                        'currencies/{pair}': 1,
+                        'currencies/all': 1,
+                        'currency_pairs/{pair}': 1,
+                        'currency_pairs/all': 1,
+                        'last_price/{pair}': 1,
+                        'ticker/{pair}': 1,
+                        'trades/{pair}': 1,
+                    },
                 },
                 'private': {
-                    'post': [
-                        'active_orders',
-                        'cancel_order',
-                        'deposit_history',
-                        'get_id_info',
-                        'get_info',
-                        'get_info2',
-                        'get_personal_info',
-                        'trade',
-                        'trade_history',
-                        'withdraw',
-                        'withdraw_history',
-                    ],
+                    'post': {
+                        'active_orders': 5, // 10 in 5 seconds = 2 per second => cost = 10 / 2 = 5
+                        'cancel_order': 5,
+                        'deposit_history': 5,
+                        'get_id_info': 5,
+                        'get_info': 10, // 10 in 10 seconds = 1 per second => cost = 10 / 1 = 10
+                        'get_info2': 5, // 20 in 10 seconds = 2 per second => cost = 10 / 2 = 5
+                        'get_personal_info': 5,
+                        'trade': 5,
+                        'trade_history': 50, // 12 in 60 seconds = 0.2 per second => cost = 10 / 0.2 = 50
+                        'withdraw': 5,
+                        'withdraw_history': 5,
+                    },
                 },
                 'ecapi': {
-                    'post': [
-                        'createInvoice',
-                        'getInvoice',
-                        'getInvoiceIdsByOrderNumber',
-                        'cancelInvoice',
-                    ],
+                    'post': {
+                        'createInvoice': 1, // unverified
+                        'getInvoice': 1,
+                        'getInvoiceIdsByOrderNumber': 1,
+                        'cancelInvoice': 1,
+                    },
                 },
                 'tlapi': {
-                    'post': [
-                        'get_positions',
-                        'position_history',
-                        'active_positions',
-                        'create_position',
-                        'change_position',
-                        'cancel_position',
-                    ],
+                    'post': {
+                        'get_positions': 66, // 10 in 60 seconds = 0.166 per second => cost = 10 / 0.166 = 66
+                        'position_history': 66, // 10 in 60 seconds
+                        'active_positions': 5, // 20 in 10 seconds
+                        'create_position': 33, // 3 in 10 seconds = 0.3 per second => cost = 10 / 0.3 = 33
+                        'change_position': 33, // 3 in 10 seconds
+                        'cancel_position': 33, // 3 in 10 seconds
+                    },
                 },
                 'fapi': {
-                    'get': [
-                        'groups/{group_id}',
-                        'last_price/{group_id}/{pair}',
-                        'ticker/{group_id}/{pair}',
-                        'trades/{group_id}/{pair}',
-                        'depth/{group_id}/{pair}',
-                    ],
+                    'get': {
+                        'groups/{group_id}': 1, // testing
+                        'last_price/{group_id}/{pair}': 1,
+                        'ticker/{group_id}/{pair}': 1,
+                        'trades/{group_id}/{pair}': 1,
+                        'depth/{group_id}/{pair}': 1,
+                    },
                 },
             },
             'options': {
                 // zaif schedule defines several market-specific fees
                 'fees': {
-                    'BTC/JPY': { 'maker': 0, 'taker': 0 },
+                    'BTC/JPY': { 'maker': 0, 'taker': 0.1 / 100 },
                     'BCH/JPY': { 'maker': 0, 'taker': 0.3 / 100 },
                     'BCH/BTC': { 'maker': 0, 'taker': 0.3 / 100 },
                     'PEPECASH/JPY': { 'maker': 0, 'taker': 0.01 / 100 },
                     'PEPECASH/BT': { 'maker': 0, 'taker': 0.01 / 100 },
                 },
             },
+            'precisionMode': TICK_SIZE,
             'exceptions': {
                 'exact': {
                     'unsupported currency_pair': BadRequest, // {"error": "unsupported currency_pair"}
@@ -139,6 +147,13 @@ module.exports = class zaif extends Exchange {
     }
 
     async fetchMarkets (params = {}) {
+        /**
+         * @method
+         * @name zaif#fetchMarkets
+         * @description retrieves data on all markets for zaif
+         * @param {object} params extra parameters specific to the exchange api endpoint
+         * @returns {[object]} an array of objects representing market data
+         */
         const markets = await this.publicGetCurrencyPairsAll (params);
         //
         //     [
@@ -171,7 +186,6 @@ module.exports = class zaif extends Exchange {
             const quote = this.safeCurrencyCode (quoteId);
             const symbol = base + '/' + quote;
             const fees = this.safeValue (this.options['fees'], symbol, this.fees['trading']);
-            const itemUnitStep = this.safeString (market, 'item_unit_step');
             result.push ({
                 'id': id,
                 'symbol': symbol,
@@ -199,8 +213,8 @@ module.exports = class zaif extends Exchange {
                 'strike': undefined,
                 'optionType': undefined,
                 'precision': {
-                    'amount': Precise.stringMul (itemUnitStep, '-1e10'),
-                    'price': this.safeInteger (market, 'aux_unit_point'),
+                    'amount': this.safeNumber (market, 'item_unit_step'),
+                    'price': this.parseNumber (this.parsePrecision (this.safeString (market, 'aux_unit_point'))),
                 },
                 'limits': {
                     'leverage': {
@@ -254,18 +268,35 @@ module.exports = class zaif extends Exchange {
     }
 
     async fetchBalance (params = {}) {
+        /**
+         * @method
+         * @name zaif#fetchBalance
+         * @description query for balance and get the amount of funds available for trading or funds locked in orders
+         * @param {object} params extra parameters specific to the zaif api endpoint
+         * @returns {object} a [balance structure]{@link https://docs.ccxt.com/en/latest/manual.html?#balance-structure}
+         */
         await this.loadMarkets ();
         const response = await this.privatePostGetInfo (params);
         return this.parseBalance (response);
     }
 
     async fetchOrderBook (symbol, limit = undefined, params = {}) {
+        /**
+         * @method
+         * @name zaif#fetchOrderBook
+         * @description fetches information on open orders with bid (buy) and ask (sell) prices, volumes and other data
+         * @param {string} symbol unified symbol of the market to fetch the order book for
+         * @param {int|undefined} limit the maximum amount of order book entries to return
+         * @param {object} params extra parameters specific to the zaif api endpoint
+         * @returns {object} A dictionary of [order book structures]{@link https://docs.ccxt.com/en/latest/manual.html#order-book-structure} indexed by market symbols
+         */
         await this.loadMarkets ();
+        const market = this.market (symbol);
         const request = {
-            'pair': this.marketId (symbol),
+            'pair': market['id'],
         };
         const response = await this.publicGetDepthPair (this.extend (request, params));
-        return this.parseOrderBook (response, symbol);
+        return this.parseOrderBook (response, market['symbol']);
     }
 
     parseTicker (ticker, market = undefined) {
@@ -307,10 +338,18 @@ module.exports = class zaif extends Exchange {
             'baseVolume': baseVolume,
             'quoteVolume': quoteVolume,
             'info': ticker,
-        }, market, false);
+        }, market);
     }
 
     async fetchTicker (symbol, params = {}) {
+        /**
+         * @method
+         * @name zaif#fetchTicker
+         * @description fetches a price ticker, a statistical calculation with the information calculated over the past 24 hours for a specific market
+         * @param {string} symbol unified symbol of the market to fetch the ticker for
+         * @param {object} params extra parameters specific to the zaif api endpoint
+         * @returns {object} a [ticker structure]{@link https://docs.ccxt.com/en/latest/manual.html#ticker-structure}
+         */
         await this.loadMarkets ();
         const market = this.market (symbol);
         const request = {
@@ -332,18 +371,27 @@ module.exports = class zaif extends Exchange {
     }
 
     parseTrade (trade, market = undefined) {
+        //
+        // fetchTrades (public)
+        //
+        //      {
+        //          "date": 1648559414,
+        //          "price": 5880375.0,
+        //          "amount": 0.017,
+        //          "tid": 176126557,
+        //          "currency_pair": "btc_jpy",
+        //          "trade_type": "ask"
+        //      }
+        //
         let side = this.safeString (trade, 'trade_type');
         side = (side === 'bid') ? 'buy' : 'sell';
         const timestamp = this.safeTimestamp (trade, 'date');
         const id = this.safeString2 (trade, 'id', 'tid');
         const priceString = this.safeString (trade, 'price');
         const amountString = this.safeString (trade, 'amount');
-        const price = this.parseNumber (priceString);
-        const amount = this.parseNumber (amountString);
-        const cost = this.parseNumber (Precise.stringMul (priceString, amountString));
         const marketId = this.safeString (trade, 'currency_pair');
         const symbol = this.safeSymbol (marketId, market, '_');
-        return {
+        return this.safeTrade ({
             'id': id,
             'info': trade,
             'timestamp': timestamp,
@@ -353,20 +401,42 @@ module.exports = class zaif extends Exchange {
             'side': side,
             'order': undefined,
             'takerOrMaker': undefined,
-            'price': price,
-            'amount': amount,
-            'cost': cost,
+            'price': priceString,
+            'amount': amountString,
+            'cost': undefined,
             'fee': undefined,
-        };
+        }, market);
     }
 
     async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
+        /**
+         * @method
+         * @name zaif#fetchTrades
+         * @description get the list of most recent trades for a particular symbol
+         * @param {string} symbol unified symbol of the market to fetch trades for
+         * @param {int|undefined} since timestamp in ms of the earliest trade to fetch
+         * @param {int|undefined} limit the maximum amount of trades to fetch
+         * @param {object} params extra parameters specific to the zaif api endpoint
+         * @returns {[object]} a list of [trade structures]{@link https://docs.ccxt.com/en/latest/manual.html?#public-trades}
+         */
         await this.loadMarkets ();
         const market = this.market (symbol);
         const request = {
             'pair': market['id'],
         };
         let response = await this.publicGetTradesPair (this.extend (request, params));
+        //
+        //      [
+        //          {
+        //              "date": 1648559414,
+        //              "price": 5880375.0,
+        //              "amount": 0.017,
+        //              "tid": 176126557,
+        //              "currency_pair": "btc_jpy",
+        //              "trade_type": "ask"
+        //          }, ...
+        //      ]
+        //
         const numTrades = response.length;
         if (numTrades === 1) {
             const firstTrade = response[0];
@@ -378,12 +448,25 @@ module.exports = class zaif extends Exchange {
     }
 
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
+        /**
+         * @method
+         * @name zaif#createOrder
+         * @description create a trade order
+         * @param {string} symbol unified symbol of the market to create an order in
+         * @param {string} type 'market' or 'limit'
+         * @param {string} side 'buy' or 'sell'
+         * @param {float} amount how much of currency you want to trade in units of base currency
+         * @param {float|undefined} price the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+         * @param {object} params extra parameters specific to the zaif api endpoint
+         * @returns {object} an [order structure]{@link https://docs.ccxt.com/en/latest/manual.html#order-structure}
+         */
         await this.loadMarkets ();
         if (type !== 'limit') {
-            throw new ExchangeError (this.id + ' allows limit orders only');
+            throw new ExchangeError (this.id + ' createOrder() allows limit orders only');
         }
+        const market = this.market (symbol);
         const request = {
-            'currency_pair': this.marketId (symbol),
+            'currency_pair': market['id'],
             'action': (side === 'buy') ? 'bid' : 'ask',
             'amount': amount,
             'price': price,
@@ -396,6 +479,15 @@ module.exports = class zaif extends Exchange {
     }
 
     async cancelOrder (id, symbol = undefined, params = {}) {
+        /**
+         * @method
+         * @name zaif#cancelOrder
+         * @description cancels an open order
+         * @param {string} id order id
+         * @param {string|undefined} symbol not used by zaif cancelOrder ()
+         * @param {object} params extra parameters specific to the zaif api endpoint
+         * @returns {object} An [order structure]{@link https://docs.ccxt.com/en/latest/manual.html#order-structure}
+         */
         const request = {
             'order_id': id,
         };
@@ -447,6 +539,16 @@ module.exports = class zaif extends Exchange {
     }
 
     async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        /**
+         * @method
+         * @name zaif#fetchOpenOrders
+         * @description fetch all unfilled currently open orders
+         * @param {string|undefined} symbol unified market symbol
+         * @param {int|undefined} since the earliest time in ms to fetch open orders for
+         * @param {int|undefined} limit the maximum number of  open orders structures to retrieve
+         * @param {object} params extra parameters specific to the zaif api endpoint
+         * @returns {[object]} a list of [order structures]{@link https://docs.ccxt.com/en/latest/manual.html#order-structure}
+         */
         await this.loadMarkets ();
         let market = undefined;
         const request = {
@@ -462,6 +564,16 @@ module.exports = class zaif extends Exchange {
     }
 
     async fetchClosedOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        /**
+         * @method
+         * @name zaif#fetchClosedOrders
+         * @description fetches information on multiple closed orders made by the user
+         * @param {string|undefined} symbol unified market symbol of the market orders were made in
+         * @param {int|undefined} since the earliest time in ms to fetch orders for
+         * @param {int|undefined} limit the maximum number of  orde structures to retrieve
+         * @param {object} params extra parameters specific to the zaif api endpoint
+         * @returns {[object]} a list of [order structures]{@link https://docs.ccxt.com/en/latest/manual.html#order-structure}
+         */
         await this.loadMarkets ();
         let market = undefined;
         const request = {
@@ -483,6 +595,17 @@ module.exports = class zaif extends Exchange {
     }
 
     async withdraw (code, amount, address, tag = undefined, params = {}) {
+        /**
+         * @method
+         * @name zaif#withdraw
+         * @description make a withdrawal
+         * @param {string} code unified currency code
+         * @param {float} amount the amount to withdraw
+         * @param {string} address the address to withdraw to
+         * @param {string|undefined} tag
+         * @param {object} params extra parameters specific to the zaif api endpoint
+         * @returns {object} a [transaction structure]{@link https://docs.ccxt.com/en/latest/manual.html#transaction-structure}
+         */
         [ tag, params ] = this.handleWithdrawTagAndParams (tag, params);
         this.checkAddress (address);
         await this.loadMarkets ();
@@ -501,10 +624,69 @@ module.exports = class zaif extends Exchange {
             request['message'] = tag;
         }
         const result = await this.privatePostWithdraw (this.extend (request, params));
+        //
+        //     {
+        //         "success": 1,
+        //         "return": {
+        //             "id": 23634,
+        //             "fee": 0.001,
+        //             "txid":,
+        //             "funds": {
+        //                 "jpy": 15320,
+        //                 "btc": 1.392,
+        //                 "xem": 100.2,
+        //                 "mona": 2600
+        //             }
+        //         }
+        //     }
+        //
+        const returnData = this.safeValue (result, 'return');
+        return this.parseTransaction (returnData, currency);
+    }
+
+    parseTransaction (transaction, currency = undefined) {
+        //
+        //     {
+        //         "id": 23634,
+        //         "fee": 0.001,
+        //         "txid":,
+        //         "funds": {
+        //             "jpy": 15320,
+        //             "btc": 1.392,
+        //             "xem": 100.2,
+        //             "mona": 2600
+        //         }
+        //     }
+        //
+        currency = this.safeCurrency (undefined, currency);
+        let fee = undefined;
+        const feeCost = this.safeValue (transaction, 'fee');
+        if (feeCost !== undefined) {
+            fee = {
+                'cost': feeCost,
+                'currency': currency['code'],
+            };
+        }
         return {
-            'info': result,
-            'id': result['return']['txid'],
-            'fee': result['return']['fee'],
+            'id': this.safeString (transaction, 'id'),
+            'txid': this.safeString (transaction, 'txid'),
+            'timestamp': undefined,
+            'datetime': undefined,
+            'network': undefined,
+            'addressFrom': undefined,
+            'address': undefined,
+            'addressTo': undefined,
+            'amount': undefined,
+            'type': undefined,
+            'currency': currency['code'],
+            'status': undefined,
+            'updated': undefined,
+            'tagFrom': undefined,
+            'tag': undefined,
+            'tagTo': undefined,
+            'comment': undefined,
+            'fee': fee,
+            'info': transaction,
         };
     }
 
@@ -514,7 +696,7 @@ module.exports = class zaif extends Exchange {
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
-        let url = this.urls['api'] + '/';
+        let url = this.urls['api']['rest'] + '/';
         if (api === 'public') {
             url += 'api/' + this.version + '/' + this.implodeParams (path, params);
         } else if (api === 'fapi') {

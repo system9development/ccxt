@@ -7,6 +7,7 @@ namespace ccxt\async;
 
 use Exception; // a common import
 use \ccxt\ArgumentsRequired;
+use \ccxt\Precise;
 
 class coinfalcon extends Exchange {
 
@@ -28,43 +29,58 @@ class coinfalcon extends Exchange {
                 'cancelOrder' => true,
                 'createOrder' => true,
                 'createReduceOnlyOrder' => false,
+                'createStopLimitOrder' => false,
+                'createStopMarketOrder' => false,
+                'createStopOrder' => false,
                 'fetchBalance' => true,
                 'fetchBorrowRate' => false,
                 'fetchBorrowRateHistories' => false,
                 'fetchBorrowRateHistory' => false,
                 'fetchBorrowRates' => false,
                 'fetchBorrowRatesPerSymbol' => false,
+                'fetchDepositAddress' => true,
+                'fetchDepositAddresses' => false,
                 'fetchDeposits' => true,
                 'fetchFundingHistory' => false,
                 'fetchFundingRate' => false,
                 'fetchFundingRateHistory' => false,
                 'fetchFundingRates' => false,
                 'fetchIndexOHLCV' => false,
-                'fetchIsolatedPositions' => false,
                 'fetchLeverage' => false,
+                'fetchLeverageTiers' => false,
+                'fetchMarginMode' => false,
                 'fetchMarkets' => true,
                 'fetchMarkOHLCV' => false,
                 'fetchMyTrades' => true,
+                'fetchOpenInterestHistory' => false,
                 'fetchOpenOrders' => true,
                 'fetchOrder' => true,
                 'fetchOrderBook' => true,
                 'fetchPosition' => false,
+                'fetchPositionMode' => false,
                 'fetchPositions' => false,
                 'fetchPositionsRisk' => false,
                 'fetchPremiumIndexOHLCV' => false,
                 'fetchTicker' => true,
                 'fetchTickers' => true,
                 'fetchTrades' => true,
+                'fetchTradinFee' => false,
+                'fetchTradingFees' => true,
+                'fetchTransfer' => false,
+                'fetchTransfers' => false,
                 'fetchWithdrawals' => true,
                 'reduceMargin' => false,
                 'setLeverage' => false,
                 'setMarginMode' => false,
                 'setPositionMode' => false,
+                'transfer' => false,
                 'withdraw' => true,
             ),
             'urls' => array(
                 'logo' => 'https://user-images.githubusercontent.com/1294454/41822275-ed982188-77f5-11e8-92bb-496bcd14ca52.jpg',
-                'api' => 'https://coinfalcon.com',
+                'api' => array(
+                    'rest' => 'https://coinfalcon.com',
+                ),
                 'www' => 'https://coinfalcon.com',
                 'doc' => 'https://docs.coinfalcon.com',
                 'fees' => 'https://coinfalcon.com/fees',
@@ -111,13 +127,19 @@ class coinfalcon extends Exchange {
                 ),
             ),
             'precision' => array(
-                'amount' => 8,
-                'price' => 8,
+                'amount' => $this->parse_number('0.00000001'),
+                'price' => $this->parse_number('0.00000001'),
             ),
+            'precisionMode' => TICK_SIZE,
         ));
     }
 
     public function fetch_markets($params = array ()) {
+        /**
+         * retrieves data on all $markets for coinfalcon
+         * @param {array} $params extra parameters specific to the exchange api endpoint
+         * @return {[array]} an array of objects representing $market data
+         */
         $response = yield $this->publicGetMarkets ($params);
         //
         //    {
@@ -139,7 +161,7 @@ class coinfalcon extends Exchange {
         //        )
         //    }
         //
-        $markets = $this->safe_value($response, 'data');
+        $markets = $this->safe_value($response, 'data', array());
         $result = array();
         for ($i = 0; $i < count($markets); $i++) {
             $market = $markets[$i];
@@ -171,8 +193,8 @@ class coinfalcon extends Exchange {
                 'strike' => null,
                 'optionType' => null,
                 'precision' => array(
-                    'price' => $this->safe_integer($market, 'price_precision'),
-                    'amount' => $this->safe_integer($market, 'size_precision'),
+                    'amount' => $this->parse_number($this->parse_precision($this->safe_string($market, 'size_precision'))),
+                    'price' => $this->parse_number($this->parse_precision($this->safe_string($market, 'price_precision'))),
                 ),
                 'limits' => array(
                     'leverage' => array(
@@ -239,17 +261,30 @@ class coinfalcon extends Exchange {
             'baseVolume' => null,
             'quoteVolume' => $this->safe_string($ticker, 'volume'),
             'info' => $ticker,
-        ), $market, false);
+        ), $market);
     }
 
     public function fetch_ticker($symbol, $params = array ()) {
+        /**
+         * fetches a price ticker, a statistical calculation with the information calculated over the past 24 hours for a specific market
+         * @param {string} $symbol unified $symbol of the market to fetch the ticker for
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} a {@link https://docs.ccxt.com/en/latest/manual.html#ticker-structure ticker structure}
+         */
         yield $this->load_markets();
         $tickers = yield $this->fetch_tickers(array( $symbol ), $params);
         return $tickers[$symbol];
     }
 
     public function fetch_tickers($symbols = null, $params = array ()) {
+        /**
+         * fetches price $tickers for multiple markets, statistical calculations with the information calculated over the past 24 hours each market
+         * @param {[string]|null} $symbols unified $symbols of the markets to fetch the $ticker for, all market $tickers are returned if not assigned
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} an array of {@link https://docs.ccxt.com/en/latest/manual.html#$ticker-structure $ticker structures}
+         */
         yield $this->load_markets();
+        $symbols = $this->market_symbols($symbols);
         $response = yield $this->publicGetMarkets ($params);
         //
         //     {
@@ -270,7 +305,7 @@ class coinfalcon extends Exchange {
         //         )
         //     }
         //
-        $tickers = $this->safe_value($response, 'data');
+        $tickers = $this->safe_value($response, 'data', array());
         $result = array();
         for ($i = 0; $i < count($tickers); $i++) {
             $ticker = $this->parse_ticker($tickers[$i]);
@@ -281,14 +316,22 @@ class coinfalcon extends Exchange {
     }
 
     public function fetch_order_book($symbol, $limit = null, $params = array ()) {
+        /**
+         * fetches information on open orders with bid (buy) and ask (sell) prices, volumes and other $data
+         * @param {string} $symbol unified $symbol of the $market to fetch the order book for
+         * @param {int|null} $limit the maximum amount of order book entries to return
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} A dictionary of {@link https://docs.ccxt.com/en/latest/manual.html#order-book-structure order book structures} indexed by $market symbols
+         */
         yield $this->load_markets();
+        $market = $this->market($symbol);
         $request = array(
-            'market' => $this->market_id($symbol),
+            'market' => $market['id'],
             'level' => '3',
         );
         $response = yield $this->publicGetMarketsMarketOrders (array_merge($request, $params));
         $data = $this->safe_value($response, 'data', array());
-        return $this->parse_order_book($data, $symbol, null, 'bids', 'asks', 'price', 'size');
+        return $this->parse_order_book($data, $market['symbol'], null, 'bids', 'asks', 'price', 'size');
     }
 
     public function parse_trade($trade, $market = null) {
@@ -352,6 +395,14 @@ class coinfalcon extends Exchange {
     }
 
     public function fetch_my_trades($symbol = null, $since = null, $limit = null, $params = array ()) {
+        /**
+         * fetch all trades made by the user
+         * @param {string} $symbol unified $market $symbol
+         * @param {int|null} $since the earliest time in ms to fetch trades for
+         * @param {int|null} $limit the maximum number of trades structures to retrieve
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {[array]} a list of {@link https://docs.ccxt.com/en/latest/manual.html#trade-structure trade structures}
+         */
         if ($symbol === null) {
             throw new ArgumentsRequired($this->id . ' fetchMyTrades() requires a $symbol argument');
         }
@@ -390,6 +441,14 @@ class coinfalcon extends Exchange {
     }
 
     public function fetch_trades($symbol, $since = null, $limit = null, $params = array ()) {
+        /**
+         * get the list of most recent trades for a particular $symbol
+         * @param {string} $symbol unified $symbol of the $market to fetch trades for
+         * @param {int|null} $since timestamp in ms of the earliest trade to fetch
+         * @param {int|null} $limit the maximum amount of trades to fetch
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {[array]} a list of ~@link https://docs.ccxt.com/en/latest/manual.html?#public-trades trade structures~
+         */
         yield $this->load_markets();
         $market = $this->market($symbol);
         $request = array(
@@ -416,9 +475,46 @@ class coinfalcon extends Exchange {
         return $this->parse_trades($data, $market, $since, $limit);
     }
 
+    public function fetch_trading_fees($params = array ()) {
+        /**
+         * fetch the trading fees for multiple markets
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} a dictionary of {@link https://docs.ccxt.com/en/latest/manual.html#fee-structure fee structures} indexed by market symbols
+         */
+        yield $this->load_markets();
+        $response = yield $this->privateGetUserFees ($params);
+        //
+        //    {
+        //        $data => {
+        //            maker_fee => '0.0',
+        //            taker_fee => '0.2',
+        //            btc_volume_30d => '0.0'
+        //        }
+        //    }
+        //
+        $data = $this->safe_value($response, 'data', array());
+        $makerString = $this->safe_string($data, 'maker_fee');
+        $takerString = $this->safe_string($data, 'taker_fee');
+        $maker = $this->parse_number(Precise::string_div($makerString, '100'));
+        $taker = $this->parse_number(Precise::string_div($takerString, '100'));
+        $result = array();
+        for ($i = 0; $i < count($this->symbols); $i++) {
+            $symbol = $this->symbols[$i];
+            $result[$symbol] = array(
+                'info' => $response,
+                'symbol' => $symbol,
+                'maker' => $maker,
+                'taker' => $taker,
+                'percentage' => true,
+                'tierBased' => true,
+            );
+        }
+        return $result;
+    }
+
     public function parse_balance($response) {
         $result = array( 'info' => $response );
-        $balances = $this->safe_value($response, 'data');
+        $balances = $this->safe_value($response, 'data', array());
         for ($i = 0; $i < count($balances); $i++) {
             $balance = $balances[$i];
             $currencyId = $this->safe_string($balance, 'currency_code');
@@ -433,9 +529,58 @@ class coinfalcon extends Exchange {
     }
 
     public function fetch_balance($params = array ()) {
+        /**
+         * query for balance and get the amount of funds available for trading or funds locked in orders
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} a ~@link https://docs.ccxt.com/en/latest/manual.html?#balance-structure balance structure~
+         */
         yield $this->load_markets();
         $response = yield $this->privateGetUserAccounts ($params);
         return $this->parse_balance($response);
+    }
+
+    public function parse_deposit_address($depositAddress, $currency = null) {
+        //
+        //     {
+        //         "address":"0x77b5051f97efa9cc52c9ad5b023a53fc15c200d3",
+        //         "tag":"0"
+        //     }
+        //
+        $address = $this->safe_string($depositAddress, 'address');
+        $tag = $this->safe_string($depositAddress, 'tag');
+        $this->check_address($address);
+        return array(
+            'currency' => $this->safe_currency_code(null, $currency),
+            'address' => $address,
+            'tag' => $tag,
+            'network' => null,
+            'info' => $depositAddress,
+        );
+    }
+
+    public function fetch_deposit_address($code, $params = array ()) {
+        /**
+         * fetch the deposit address for a $currency associated with this account
+         * @param {string} $code unified $currency $code
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} an {@link https://docs.ccxt.com/en/latest/manual.html#address-structure address structure}
+         */
+        yield $this->load_markets();
+        $currency = $this->safe_currency($code);
+        $request = array(
+            'currency' => $this->safe_string_lower($currency, 'id'),
+        );
+        $response = yield $this->privateGetAccountDepositAddress (array_merge($request, $params));
+        //
+        //     {
+        //         $data => {
+        //             address => '0x9918987bbe865a1a9301dc736cf6cf3205956694',
+        //             tag:null
+        //         }
+        //     }
+        //
+        $data = $this->safe_value($response, 'data', array());
+        return $this->parse_deposit_address($data, $currency);
     }
 
     public function parse_order_status($status) {
@@ -507,6 +652,16 @@ class coinfalcon extends Exchange {
     }
 
     public function create_order($symbol, $type, $side, $amount, $price = null, $params = array ()) {
+        /**
+         * create a trade order
+         * @param {string} $symbol unified $symbol of the $market to create an order in
+         * @param {string} $type 'market' or 'limit'
+         * @param {string} $side 'buy' or 'sell'
+         * @param {float} $amount how much of currency you want to trade in units of base currency
+         * @param {float|null} $price the $price at which the order is to be fullfilled, in units of the quote currency, ignored in $market orders
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} an {@link https://docs.ccxt.com/en/latest/manual.html#order-structure order structure}
+         */
         yield $this->load_markets();
         $market = $this->market($symbol);
         // price/size must be string
@@ -526,6 +681,13 @@ class coinfalcon extends Exchange {
     }
 
     public function cancel_order($id, $symbol = null, $params = array ()) {
+        /**
+         * cancels an open order
+         * @param {string} $id order $id
+         * @param {string|null} $symbol unified $symbol of the $market the order was made in
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} An {@link https://docs.ccxt.com/en/latest/manual.html#order-structure order structure}
+         */
         yield $this->load_markets();
         $request = array(
             'id' => $id,
@@ -537,6 +699,12 @@ class coinfalcon extends Exchange {
     }
 
     public function fetch_order($id, $symbol = null, $params = array ()) {
+        /**
+         * fetches information on an order made by the user
+         * @param {string|null} $symbol unified $symbol of the market the order was made in
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} An {@link https://docs.ccxt.com/en/latest/manual.html#order-structure order structure}
+         */
         yield $this->load_markets();
         $request = array(
             'id' => $id,
@@ -547,6 +715,14 @@ class coinfalcon extends Exchange {
     }
 
     public function fetch_open_orders($symbol = null, $since = null, $limit = null, $params = array ()) {
+        /**
+         * fetch all unfilled currently open $orders
+         * @param {string|null} $symbol unified $market $symbol
+         * @param {int|null} $since the earliest time in ms to fetch open $orders for
+         * @param {int|null} $limit the maximum number of  open $orders structures to retrieve
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {[array]} a list of {@link https://docs.ccxt.com/en/latest/manual.html#order-structure order structures}
+         */
         yield $this->load_markets();
         $request = array();
         $market = null;
@@ -565,6 +741,14 @@ class coinfalcon extends Exchange {
     }
 
     public function fetch_deposits($code = null, $since = null, $limit = null, $params = array ()) {
+        /**
+         * fetch all deposits made to an account
+         * @param {string|null} $code unified $currency $code
+         * @param {int|null} $since the earliest time in ms to fetch deposits for
+         * @param {int|null} $limit the maximum number of deposits structures to retrieve
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {[array]} a list of {@link https://docs.ccxt.com/en/latest/manual.html#transaction-structure transaction structures}
+         */
         yield $this->load_markets();
         $request = array(
             // $currency => 'xrp', // optional => $currency $code in lowercase
@@ -576,7 +760,7 @@ class coinfalcon extends Exchange {
         $currency = null;
         if ($code !== null) {
             $currency = $this->currency($code);
-            $request['currency'] = strtolower($currency['id']);
+            $request['currency'] = $this->safe_string_lower($currency, 'id');
         }
         if ($since !== null) {
             $request['since_time'] = $this->iso8601($since);
@@ -602,6 +786,14 @@ class coinfalcon extends Exchange {
     }
 
     public function fetch_withdrawals($code = null, $since = null, $limit = null, $params = array ()) {
+        /**
+         * fetch all withdrawals made from an account
+         * @param {string|null} $code unified $currency $code
+         * @param {int|null} $since the earliest time in ms to fetch withdrawals for
+         * @param {int|null} $limit the maximum number of withdrawals structures to retrieve
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {[array]} a list of {@link https://docs.ccxt.com/en/latest/manual.html#transaction-structure transaction structures}
+         */
         yield $this->load_markets();
         $request = array(
             // $currency => 'xrp', // optional => $currency $code in lowercase
@@ -613,7 +805,7 @@ class coinfalcon extends Exchange {
         $currency = null;
         if ($code !== null) {
             $currency = $this->currency($code);
-            $request['currency'] = strtolower($currency['id']);
+            $request['currency'] = $this->safe_string_lower($currency, 'id');
         }
         if ($since !== null) {
             $request['since_time'] = $this->iso8601($since);
@@ -640,12 +832,21 @@ class coinfalcon extends Exchange {
     }
 
     public function withdraw($code, $amount, $address, $tag = null, $params = array ()) {
+        /**
+         * make a withdrawal
+         * @param {string} $code unified $currency $code
+         * @param {float} $amount the $amount to withdraw
+         * @param {string} $address the $address to withdraw to
+         * @param {string|null} $tag
+         * @param {array} $params extra parameters specific to the coinfalcon api endpoint
+         * @return {array} a {@link https://docs.ccxt.com/en/latest/manual.html#$transaction-structure $transaction structure}
+         */
         list($tag, $params) = $this->handle_withdraw_tag_and_params($tag, $params);
         $this->check_address($address);
         yield $this->load_markets();
         $currency = $this->currency($code);
         $request = array(
-            'currency' => strtolower($currency['id']),
+            'currency' => $this->safe_string_lower($currency, 'id'),
             'address' => $address,
             'amount' => $amount,
             // 'tag' => 'string', // withdraw tag/memo
@@ -787,7 +988,7 @@ class coinfalcon extends Exchange {
                 'Content-Type' => 'application/json',
             );
         }
-        $url = $this->urls['api'] . $request;
+        $url = $this->urls['api']['rest'] . $request;
         return array( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
     }
 

@@ -99,7 +99,9 @@ if (settings && settings.skip) {
 
 async function test (methodName, exchange, ... args) {
     console.log ('Testing', exchange.id, methodName, '(', ... args, ')')
-    return await (tests[methodName] (exchange, ... args))
+    if (exchange.has[methodName]) {
+        return await (tests[methodName] (exchange, ... args))
+    }
 }
 
 async function testSymbol (exchange, symbol) {
@@ -156,6 +158,7 @@ async function loadExchange (exchange) {
         'BTC/RUB',
         'BTC/UAH',
         'LTC/BTC',
+        'EUR/USD',
     ]
 
     let result = exchange.symbols.filter ((symbol) => symbols.indexOf (symbol) >= 0)
@@ -182,6 +185,7 @@ function getTestSymbol (exchange, symbols) {
             const active = exchange.safeValue (market, 'active')
             if (active || (active === undefined)) {
                 symbol = s
+                break;
             }
         }
     }
@@ -189,6 +193,8 @@ function getTestSymbol (exchange, symbols) {
 }
 
 async function testExchange (exchange) {
+
+    await loadExchange (exchange)
 
     const codes = [
         'BTC',
@@ -223,14 +229,12 @@ async function testExchange (exchange) {
         'ZRX',
     ]
 
-    let code = codes[0]
+    let code = undefined
     for (let i = 0; i < codes.length; i++) {
         if (codes[i] in exchange.currencies) {
             code = codes[i]
         }
     }
-
-    await loadExchange (exchange)
 
     let symbol = getTestSymbol (exchange, [
         'BTC/USD',
@@ -244,6 +248,7 @@ async function testExchange (exchange) {
         'BTC/JPY',
         'LTC/BTC',
         'ZRX/WETH',
+        'EUR/USD',
     ])
 
     if (symbol === undefined) {
@@ -294,14 +299,18 @@ async function testExchange (exchange) {
 
     const balance = await test ('fetchBalance', exchange)
 
-    await test ('fetchFundingFees', exchange)
+    await test ('fetchAccounts', exchange)
+    await test ('fetchTransactionFees', exchange)
     await test ('fetchTradingFees', exchange)
     await test ('fetchStatus', exchange)
+    await test ('fetchOpenInterestHistory', exchange, symbol)
 
     await test ('fetchOrders', exchange, symbol)
     await test ('fetchOpenOrders', exchange, symbol)
     await test ('fetchClosedOrders', exchange, symbol)
     await test ('fetchMyTrades', exchange, symbol)
+    await test ('fetchLeverageTiers', exchange, symbol)
+    await test ('fetchOpenInterestHistory', exchange, symbol)
 
     await test ('fetchPositions', exchange, symbol)
 
@@ -314,6 +323,8 @@ async function testExchange (exchange) {
     await test ('fetchWithdrawals', exchange, code)
     await test ('fetchBorrowRate', exchange, code)
     await test ('fetchBorrowRates', exchange)
+    await test ('fetchBorrowInterest', exchange, code)
+    await test ('fetchBorrowInterest', exchange, code, symbol)
 
     if (exchange.extendedTest) {
 
@@ -390,8 +401,6 @@ async function tryAllProxies (exchange, proxies) {
                 continue
             } else if (e instanceof ccxt.ExchangeNotAvailable) {
                 continue
-            } else if (e instanceof ccxt.AuthenticationError) {
-                return
             } else if (e instanceof ccxt.AuthenticationError) {
                 return
             } else if (e instanceof ccxt.InvalidNonce) {
