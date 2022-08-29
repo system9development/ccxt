@@ -83,6 +83,7 @@ from ccxt.binancecoinm import binancecoinm                  # noqa: F401
 from ccxt.binanceus import binanceus                        # noqa: F401
 from ccxt.binanceusdm import binanceusdm                    # noqa: F401
 from ccxt.bit2c import bit2c                                # noqa: F401
+from ccxt.bitazza import bitazza                            # noqa: F401
 from ccxt.bitbank import bitbank                            # noqa: F401
 from ccxt.bitbay import bitbay                              # noqa: F401
 from ccxt.bitbns import bitbns                              # noqa: F401
@@ -172,6 +173,7 @@ from ccxt.okcoin import okcoin                              # noqa: F401
 from ccxt.okex import okex                                  # noqa: F401
 from ccxt.okex5 import okex5                                # noqa: F401
 from ccxt.okx import okx                                    # noqa: F401
+from ccxt.osl import osl                                    # noqa: F401
 from ccxt.paymium import paymium                            # noqa: F401
 from ccxt.phemex import phemex                              # noqa: F401
 from ccxt.poloniex import poloniex                          # noqa: F401
@@ -207,6 +209,7 @@ exchanges = [
     'binanceus',
     'binanceusdm',
     'bit2c',
+    'bitazza',
     'bitbank',
     'bitbay',
     'bitbns',
@@ -296,6 +299,7 @@ exchanges = [
     'okex',
     'okex5',
     'okx',
+    'osl',
     'paymium',
     'phemex',
     'poloniex',

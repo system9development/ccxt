@@ -458,7 +458,7 @@ declare module 'ccxt' {
     export class binanceus extends binance {}
     export class binanceusdm extends binance {}
     export class bit2c extends Exchange {}
-    export class bitazza extends Exchange {}
+    export class bitazza extends ndax {}
     export class bitbank extends Exchange {}
     export class bitbay extends zonda {}
     export class bitbns extends Exchange {}
@@ -548,6 +548,7 @@ declare module 'ccxt' {
     export class okex extends okx {}
     export class okex5 extends okex {}
     export class okx extends Exchange {}
+    export class osl extends Exchange {}
     export class paymium extends Exchange {}
     export class phemex extends Exchange {}
     export class poloniex extends Exchange {}
@@ -675,6 +676,7 @@ declare module 'ccxt' {
         | 'okex'
         | 'okex5'
         | 'okx'
+        | 'osl'
         | 'paymium'
         | 'phemex'
         | 'poloniex'
