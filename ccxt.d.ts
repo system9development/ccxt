@@ -635,6 +635,7 @@ declare module 'ccxt' {
         | 'crex24'
         | 'cryptocom'
         | 'currencycom'
+        | 'deepwaters'
         | 'delta'
         | 'deribit'
         | 'digifinex'
