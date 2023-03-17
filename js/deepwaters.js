@@ -3,8 +3,8 @@
 //  ---------------------------------------------------------------------------
 
 const Exchange = require ('./base/Exchange');
-const { ExchangeError } = require('./base/errors');
-const { TRUNCATE, DECIMAL_PLACES } = require ('./base/functions/number');
+const { ExchangeError, ArgumentsRequired, InvalidNonce, BadSymbol } = require ('./base/errors');
+const { DECIMAL_PLACES } = require ('./base/functions/number');
 const Precise = require ('./base/Precise');
 
 //  ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ module.exports = class deepwaters extends Exchange {
                 'createStopMarketOrder': false,
                 'createStopOrder': false,
                 'fetchBalance': true,                          // GET /customer {.result.balances[]}
-                'fetchBidsAsks': undefined,
+                'fetchBidsAsks': true,
                 'fetchBorrowRate': false,
                 'fetchBorrowRateHistories': false,
                 'fetchBorrowRateHistory': false,
@@ -52,16 +52,16 @@ module.exports = class deepwaters extends Exchange {
                 'fetchOrderBook': true,                         // GET /pairs/:marketId/orderbook
                 'fetchOrders': true,                            // GET /orders?pair=:marketId (pair is optional, returns max 100 orders)
                 'fetchPositionMode': false,
-                'fetchStatus': undefined,                       // could maybe use customer endpoint?
-                'fetchTicker': true,                            // Available from /asset/:marketName
-                'fetchTickers': true,                           // Available from /assets
-                'fetchTime': undefined,                         // not implemented
+                'fetchStatus': false,                           // could maybe use customer endpoint?
+                'fetchTicker': true,
+                'fetchTickers': true,
+                'fetchTime': true,
                 'fetchTrades': false,
                 'fetchTradingFee': false,
                 'fetchTradingFees': false,
-                'fetchTransactionFees': undefined,
-                'fetchTransactions': undefined,
-                'fetchTransfers': undefined,
+                'fetchTransactionFees': false,
+                'fetchTransactions': false,
+                'fetchTransfers': false,
                 'fetchWithdrawals': false,
                 'transfer': false,
                 'withdraw': false,
@@ -69,10 +69,8 @@ module.exports = class deepwaters extends Exchange {
             'timeframes': undefined,
             'urls': {
                 'test': {
-                    // 'public': 'https://testnet.api.deepwaters.xyz/rest/v1',
                     'public': 'https://testnet.api.deepwaters.xyz/rest/v1',
                     'private': 'https://testnet.api.deepwaters.xyz/rest/v1',
-                    // 'private': 'https://testnet.api.deepwaters.xyz/rest/v1',
                 },
                 'api': {
                     'public': 'https://api.deepwaters.xyz/rest/v1',
@@ -91,7 +89,8 @@ module.exports = class deepwaters extends Exchange {
                     'maker': 0.001,
                     'taker': 0.0015,
                     // 'feeside': TODO
-                }
+                    'feeSide': 'get',
+                },
             },
             'requiredCredentials': {
                 'apiKey': true,
@@ -99,11 +98,12 @@ module.exports = class deepwaters extends Exchange {
             },
             'api': {
                 'public': {
-                    'get': {
-                        'assets': 1,
-                        'pairs': 1,
-                        'pairs/{pair}/orderbook': 1,
-                    },
+                    'get': [
+                        'assets',
+                        'pairs',
+                        'pairs/{pair}/orderbook',
+                        'time',
+                    ],
                 },
                 'private': {
                     'get': {
@@ -123,12 +123,100 @@ module.exports = class deepwaters extends Exchange {
                         'orders/by-customer-object-id/{id}': 1,
                     },
                 },
-                'precisionMode': DECIMAL_PLACES,
             },
+            'precisionMode': DECIMAL_PLACES,
         });
     }
 
-    async fetchMarkets () {
+    async fetchBidsAsks (symbols = undefined, params = {}) {
+        /**
+         * @method
+         * @name deepwaters#fetchBidsAsks
+         * @description fetches the bid and ask price and volume for multiple markets
+         * @param {[string]|undefined} symbols unified symbols of the markets to fetch the bids and asks for, all markets are returned if not assigned
+         * @param {object} params extra parameters specific to the deepwaters api endpoint
+         * @returns {object} a dictionary of [ticker structures]{@link https://docs.ccxt.com/en/latest/manual.html#ticker-structure}
+         */
+        return await this.fetchTickers (symbols, params);
+    }
+
+    async fetchTicker (symbol, params = {}) {
+        /**
+         * @method
+         * @name deepwaters#fetchTicker
+         * @description fetches a price ticker, a statistical calculation with the information calculated over the past 24 hours for a specific market
+         * @param {string} symbol unified symbol of the market to fetch the ticker for
+         * @param {object} params extra parameters specific to the deepwaters api endpoint
+         * @returns {object} a [ticker structure]{@link https://docs.ccxt.com/en/latest/manual.html#ticker-structure}
+         */
+        if (!symbol) {
+            throw new ArgumentsRequired ('symbol must be provided to deepwaters#fetchTicket()');
+        }
+        const tickers = await this.fetchTickers ([ symbol ]);
+        if (tickers.length === 0) {
+            throw new BadSymbol ('Symbol not found. Is it available in  deepwaters#fetchMarkets()?');
+        }
+        return tickers[symbol];
+    }
+
+    async fetchTickers (symbols = undefined, params = {}) {
+        /**
+         * @method
+         * @name deepwaters#fetchTickers
+         * @description fetches price tickers for multiple markets, statistical calculations with the information calculated over the past 24 hours each market
+         * @param {[string]|undefined} symbols unified symbols of the markets to fetch the ticker for, all market tickers are returned if not assigned
+         * @param {object} params extra parameters specific to the deepwaters api endpoint
+         * @returns {object} a dictionary of [ticker structures]{@link https://docs.ccxt.com/en/latest/manual.html#ticker-structure}
+         */
+        await this.loadMarkets ();
+        symbols = this.marketSymbols (symbols);
+        const response = await this.publicGetPairs ();
+        const success = this.safeValue (response, 'success', false);
+        if (!success) {
+            return this.handleError (response);
+        }
+        const markets = this.safeValue (response, 'result', {});
+        const tickers = [];
+        for (let i = 0; i < markets.length; i++) {
+            // {
+            //     baseAssetRootSymbol: 'AVAX',
+            //     quoteAssetRootSymbol: 'USDC',
+            //     baseAssetParentSymbol: 'WAVAX.DW',
+            //     quoteAssetParentSymbol: 'USDC.DW',
+            //     baseAssetID: 'WAVAX.AVALANCHE_FUJI.43113.TESTNET.PROD',
+            //     quoteAssetID: 'USDC.AVALANCHE_FUJI.43113.TESTNET.PROD',
+            //     name: 'WAVAX.AVALANCHE_FUJI.43113.TESTNET.PROD-USDC.AVALANCHE_FUJI.43113.TESTNET.PROD',
+            //     baseAssetIncrementSize: '.01',
+            //     baseAssetIncrementPrecision: '2',
+            //     quoteAssetIncrementSize: '.001',
+            //     quoteAssetIncrementPrecision: '3',
+            //     createdAtMicros: '1677695274781348',
+            //     quotedAtMicros: '1677838210968536',
+            //     ask: '16.418',
+            //     bid: '16.396'
+            // }
+            const market = markets[i];
+            const base = this.safeValue (market, 'baseAssetRootSymbol');
+            const quote = this.safeValue (market, 'quoteAssetRootSymbol');
+            const symbol = base + '/' + quote;
+            const quotedAtMicros = this.safeValue (market, 'quotedAtMicros');
+            const timestamp = this.parseNumber (Precise.stringDiv (quotedAtMicros, '1000', 0));
+            const datetime = this.iso8601 (timestamp);
+            const ask = this.safeNumber (market, 'ask');
+            const bid = this.safeNumber (market, 'bid');
+            tickers.push (this.safeTicker ({
+                'symbol': symbol,
+                'timestamp': timestamp,
+                'datetime': datetime,
+                'ask': ask,
+                'bid': bid,
+                'info': market,
+            }));
+        }
+        return this.filterByArray (tickers, 'symbol', symbols);
+    }
+
+    async fetchMarkets (params = {}) {
         /**
          * @method
          * @name deepwaters#fetchMarkets
@@ -170,7 +258,7 @@ module.exports = class deepwaters extends Exchange {
             const exchangeBaseId = this.safeString (market, 'baseAssetID');
             const exchangeQuoteId = this.safeString (market, 'quoteAssetID');
             const baseId = this.safeString (market, 'baseAssetRootSymbol');
-            const quoteId = this.safeString (market, 'quoteAssetRootSymbol'); 
+            const quoteId = this.safeString (market, 'quoteAssetRootSymbol');
             const base = this.safeCurrencyCode (baseId);
             const quote = this.safeCurrencyCode (quoteId);
             const pricePrecision = this.safeString (market, 'quoteAssetIncrementPrecision');
@@ -204,6 +292,7 @@ module.exports = class deepwaters extends Exchange {
                     'amount': this.parseNumber (this.parsePrecision (amountPrecision)),
                     'price': this.parseNumber (this.parsePrecision (pricePrecision)),
                     // base and quote precisions not defined
+                    'cost': undefined,
                 },
                 // Docs don't explain what the order limits are
                 'limits': {
@@ -253,12 +342,13 @@ module.exports = class deepwaters extends Exchange {
         this.dwnonce = this.parseNumber (nonce);
     }
 
-    async fetchCurrencies () {
+    async fetchCurrencies (params = {}) {
         /**
          * @method
          * @name deepwaters#fetchCurrencies
-         * @description fetches all available currencies on an exchange
-         * @returns {object} an associative dictionary of currencies
+         * @description Fetches all available currencies an exchange and returns an associative dictionary of currencies.
+         * @param {object} params extra parameters specific to the deepwaters api endpoint
+         * @returns {object} a dictionary of [currency structure]{@link https://docs.ccxt.com/en/latest/manual.html#currency-structure}
          */
         const response = await this.publicGetAssets ();
         const success = this.safeValue (response, 'success', false);
@@ -358,24 +448,21 @@ module.exports = class deepwaters extends Exchange {
             const base = this.safeCurrencyCode (baseId);
             const quoteId = this.safeString (order, 'quoteAssetID');
             let quote = this.safeCurrencyCode (quoteId);
-            if ((!(quoteId in this.currencies_by_id)) && (quoteId.indexOf('USDC') === 0)) {
+            if ((!(quoteId in this.currencies_by_id)) && (quoteId.indexOf ('USDC') === 0)) {
                 // Their testnet has multiple USDC currencies with different IDs.
                 // This causes the currencies list USDC entry to be overwritten when currencies
                 // are parsed, which means the above will have an undefined quote.
                 // As of right now, there isn't any ambiguity with mainnet currencies
                 quote = 'USDC';
             }
-    
             const marketSymbol = base + '/' + quote;
             market = this.market (marketSymbol);
         }
         const status = this.parseOrderStatus (this.safeString (order, 'status'));
-
         // Deepwaters appears to have 2 unique IDs per order: customerObjectID and
         // venueOrderID. customerObjectID is something the user can set, but is otherwise
         // autogenerated
         const id = this.safeString (order, 'venueOrderID');
-
         const clientOrderId = this.safeString (order, 'customerObjectID');
         const createdTimestampMicros = this.safeString (order, 'createdAtMicros');
         const updatedTimestampMicros = this.safeString (order, 'modifiedAtMicros');
@@ -387,7 +474,6 @@ module.exports = class deepwaters extends Exchange {
         if (updatedTimestampMs) {
             updatedTimestampMs = Precise.stringDiv (updatedTimestampMicros, '1000', 0);
         }
-
         let timeInForce = 'GTC';
         if (this.safeString (order, 'durationType') === 'GOOD_TILL_EXPIRY') {
             // GTE doesn't seem to be used anywhere else in ccxt,
@@ -405,7 +491,7 @@ module.exports = class deepwaters extends Exchange {
         const price = this.safeString (order, 'price');
         const remaining = this.safeString (order, 'quantity');
         const amount = this.safeString (order, 'originalQuantity');
-        const filled = Precise.stringSub(amount, remaining);
+        const filled = Precise.stringSub (amount, remaining);
         const parsedOrder = {
             'info': order,
             'id': id,
@@ -428,7 +514,7 @@ module.exports = class deepwaters extends Exchange {
             'stopPrice': undefined, // N/A
             'triggerPrice': undefined, // N/A
             'postOnly': undefined, // N/A
-        }
+        };
         if (status === 'closed') {
             parsedOrder['lastTradetimestamp'] = this.parseNumber (updatedTimestampMs);
         }
@@ -438,7 +524,7 @@ module.exports = class deepwaters extends Exchange {
         return this.safeOrder (parsedOrder, market);
     }
 
-    async fetchBalance () {
+    async fetchBalance (params = {}) {
         /**
          * @method
          * @name deepwaters#fetchBalance
@@ -452,7 +538,69 @@ module.exports = class deepwaters extends Exchange {
         if (!success) {
             return this.handleError (response);
         }
-        return {};
+        // {
+        //     customerAddress: '0x4db55abc5e7532439501bc6aed40b6281382959a',
+        //     nonce: '1',
+        //     createdAtMicros: '1677829125843454',
+        //     modifiedAtMicros: '1677829125843553',
+        //     lastCustomerObjectID: null,
+        //     balances: []
+        // }
+        const result = this.safeValue (response, 'result', {});
+        const balances = this.safeValue (result, 'balances');
+        const modifiedAtMicros = this.safeValue (result, 'modifiedAtMicros');
+        const timestamp = this.parseNumber (Precise.stringDiv (modifiedAtMicros, '1000', 0));
+        const datetime = this.iso8601 (timestamp);
+        const output = {
+            'timestamp': timestamp,
+            'datetime': datetime,
+            'info': result,
+            'free': {},
+            'used': {},
+            'total': {},
+        };
+        for (let i = 0; i < balances.length; i++) {
+            // {
+            //     'amount': 'string',
+            //     'assetID': 'string',
+            //     'serviceDescription': 'string',
+            //     'serviceName': 'string'
+            // }
+            const balance = balances[i];
+            const currencyId = this.safeValue (balance, 'assetID');
+            const currency = this.safeValue (this.currencies_by_id, currencyId);
+            if (!currency) {
+                // this is only needed in sandbox mode, if you get airdrops
+                continue;
+            }
+            const currencyCode = this.safeValue (currency, 'code');
+            if (!output[currencyCode]) {
+                output[currencyCode] = {
+                    'used': '0',
+                    'free': '0',
+                };
+                output['used'][currencyCode] = '0';
+                output['free'][currencyCode] = '0';
+            }
+            const amount = this.safeValue (balance, 'amount');
+            const serviceName = this.safeValue (balance, 'serviceName');
+            if (serviceName === 'accounting.available') {
+                output[currencyCode]['free'] = amount;
+                output['free'][currencyCode] = amount;
+            } else if (serviceName === 'fee' || serviceName === 'swap.engine') {
+                const used = Precise.stringAdd (output[currencyCode]['used'], amount);
+                output[currencyCode]['used'] = used;
+                output['used'][currencyCode] = used;
+            }
+        }
+        const keys = Object.keys (output['used']);
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            const total = Precise.stringAdd (output['used'][key], output['free'][key]);
+            output['total'][key] = total;
+            output[key]['total'] = total;
+        }
+        return this.safeBalance (output);
     }
 
     async fetchOrderBook (symbol, limit = undefined, params = {}) {
@@ -462,7 +610,7 @@ module.exports = class deepwaters extends Exchange {
          * @description fetches information on open orders with bid (buy) and ask (sell) prices, volumes and other data
          * @param {string} symbol unified symbol of the market to fetch the order book for
          * @param {int|undefined} limit the maximum amount of order book entries to return
-         * @param {object} params extra parameters specific to the osl api endpoint
+         * @param {object} params extra parameters specific to the deepwaters api endpoint
          * @returns {object} A dictionary of [order book structures]{@link https://docs.ccxt.com/en/latest/manual.html#order-book-structure} indexed by market symbols
          */
         await this.loadMarkets ();
@@ -471,7 +619,7 @@ module.exports = class deepwaters extends Exchange {
             'pair': market['id'],
         };
         if (limit !== undefined) {
-            request['depth'] = limit; // default 25, see https://docs.osl.com/#get-l2-order-book
+            request['depth'] = limit;
         }
         const response = await this.publicGetPairsPairOrderbook (this.extend (request, params));
         const success = this.safeValue (response, 'success', false);
@@ -513,11 +661,11 @@ module.exports = class deepwaters extends Exchange {
         await this.loadMarkets ();
         const request = {};
         if (symbol !== undefined) {
-            market = this.market (symbol);
+            const market = this.market (symbol);
             request['pair'] = market['id'];
         }
         if (since !== undefined) {
-            since = Precise.stringMul (this.decimalToPrecision (since), 1000);
+            since = Precise.stringMul (this.decimalToPrecision (since), '1000');
             request['created-at-or-after-micros'] = since;
         }
         if (limit !== undefined) {
@@ -530,51 +678,183 @@ module.exports = class deepwaters extends Exchange {
             return this.handleError (response);
         }
         const result = this.safeValue (response, 'result', {});
-        const orders = this.safeValue (result, 'orders', [])
+        const orders = this.safeValue (result, 'orders', []);
         // const success = this.safeValue (response, 'success', false);
         return this.parseOrders (orders);
     }
 
+    async fetchMyTrades (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        /**
+         * @method
+         * @name deepwaters#fetchMyTrades
+         * @description fetch all trades made by the user
+         * @param {string} symbol unified market symbol
+         * @param {int|undefined} since the earliest time in ms to fetch trades for
+         * @param {int|undefined} limit the maximum number of trades structures to retrieve
+         * @param {object} params extra parameters specific to the deepwaters api endpoint
+         * @returns {[object]} a list of [trade structures]{@link https://docs.ccxt.com/en/latest/manual.html#trade-structure}
+         */
+        await this.loadMarkets ();
+        const request = {
+            // 'pair': '',
+            // 'type': '',
+            // 'created-at-or-after-micros': '',
+            // 'created-before-micros': '',
+            // 'skip': '',
+            'limit': 100,
+        };
+        if (symbol !== undefined) {
+            const market = this.market (symbol);
+            request['pair'] = market['id'];
+        }
+        if (since !== undefined) {
+            since = Precise.stringMul (this.decimalToPrecision (since), '1000');
+            request['created-at-or-after-micros'] = since;
+        }
+        if (limit !== undefined) {
+            limit = this.decimalToPrecision (limit);
+            request['limit'] = limit;
+        }
+        const type = this.safeString (params, 'type');
+        if (typeof type === 'string') {
+            params = this.omit (params, 'type');
+            if (type.toUpperCase === 'LIMIT') {
+                request['type'] = 'LIMIT';
+            }
+            if (type.toUpperCase () === 'MARKET') {
+                // Getting the following error right now with type === 'MARKET' despite what the docs say
+                //     handleRestResponse:
+                //     deepwaters GET https://testnet.api.deepwaters.xyz/rest/v1/trades?limit=10&pair=WAVAX.AVALANCHE_FUJI.43113.TESTNET.PROD-USDC.AVALANCHE_FUJI.43113.TESTNET.PROD&created-at-or-after-micros=1677982036376000&type=MARKET 400 Bad Request
+                //    ResponseHeaders:
+                //     {
+                //      'Alt-Svc': 'h3=":443"; ma=2592000',
+                //      Connection: 'close',
+                //      'Content-Length': '112',
+                //      'Content-Type': 'application/json; charset=utf-8',
+                //      Date: 'Sun, 05 Mar 2023 05:27:16 GMT',
+                //      Server: 'Caddy',
+                //      Vary: 'Origin'
+                //    }
+                //    ResponseBody:
+                //     {"success":false,"status":"invalid request","error":"MARKET is an invalid type. Valid are: FILL, PARTIAL_FILL"}
+                request['type'] = 'PARTIAL_FILL';
+            }
+        }
+        const response = await this.privateGetTrades (this.extend (request, params));
+        const success = this.safeValue (response, 'success', false);
+        if (!success) {
+            return this.handleError (response);
+        }
+        const result = this.safeValue (response, 'result', {});
+        const trades = this.safeValue (result, 'trades', []);
+        const output = [];
+        for (let i = 0; i < trades.length; i++) {
+            // {
+            //     "aggressorCustomerObjectID": "string",
+            //     "aggressorFeesTotalValueInQuoteAsset": "string",
+            //     "aggressorFeesQuoteAssetAmount": "string",
+            //     "aggressorFeesWTRAmount": "string",
+            //     "aggressorRemainingQuantity": "string",
+            //     "aggressorVenueOrderID": "string",
+            //     "baseAssetID": "string",
+            //     "createdAtMicros": 0,
+            //     "makerCustomerObjectID": "string",
+            //     "makerFeesTotalValueInQuoteAsset": "string",
+            //     "makerFeesQuoteAssetAmount": "string",
+            //     "makerFeesWTRAmount": "string",
+            //     "makerRemainingQuantity": "string",
+            //     "makerVenueOrderID": "string",
+            //     "makerWasBuyer": true,
+            //     "price": "string",
+            //     "quantity": "string",
+            //     "quoteAssetID": "string",
+            //     "tradeID": "string",
+            //     "tradeType": "FILL",
+            //     "userWasAggressor": true,
+            //     "userWasMaker": true
+            // }
+            const trade = trades[i];
+            const id = this.safeValue (trade, 'tradeID');
+            const createdAtMicros = this.safeString (trade, 'createdAtMicros');
+            const timestamp = this.parseNumber (Precise.stringDiv (createdAtMicros, '1000', 0));
+            const datetime = this.iso8601 (timestamp);
+            const baseAssetID = this.safeValue (trade, 'baseAssetID');
+            const quoteAssetID = this.safeValue (trade, 'quoteAssetID');
+            const market = this.market (baseAssetID + '-' + quoteAssetID);
+            const symbol = this.safeValue (market, 'symbol');
+            const makerWasBuyer = this.safeValue (market, 'makerWasBuyer');
+            const userWasMaker = this.safeValue (market, 'userWasMaker');
+            const maker = userWasMaker ? 'maker' : 'taker';
+            let orderId = undefined;
+            if (maker) {
+                orderId = this.safeString (trade, 'makerVenueOrderID');
+            } else {
+                orderId = this.safeString (trade, 'aggressorVenueOrderID');
+            }
+            const side = userWasMaker === makerWasBuyer ? 'buy' : 'sell';
+            const price = this.safeNumber (trade, 'price');
+            const amount = this.safeNumber (trade, 'quantity');
+            const cost = Precise.stringMul (this.safeString (trade, 'price'), this.safeString (trade, 'quantity'));
+            const userWasAggressor = this.safeValue (market, 'userWasAggressor');
+            const type = userWasAggressor ? 'market' : 'limit';
+            output.push (this.safeTrade ({
+                'info': trade,
+                'id': id,
+                'timestamp': timestamp,
+                'datetime': datetime,
+                'symbol': symbol,
+                'order': orderId,
+                'type': type,
+                'side': side,
+                'takerOrMaker': maker,
+                'price': price,
+                'amount': amount,
+                'cost': cost,
+            }));
+        }
+        return output;
+    }
+
     async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
         const suppliedFilters = this.safeString (params, 'status-in', '').split ('-');
-        const constructedFilters = ['ACTIVE', 'PARTIALLY_FILLED'];
-        const remainingAvailableFilters = ['FILLED', 'REJECTED', 'CANCELLED', 'EXPIRED'];
+        const constructedFilters = [ 'ACTIVE', 'PARTIALLY_FILLED' ];
+        const remainingAvailableFilters = [ 'FILLED', 'REJECTED', 'CANCELLED', 'EXPIRED' ];
         for (let i = 0; i < remainingAvailableFilters.length; i++) {
             const filter = remainingAvailableFilters[i];
             if (this.inArray (filter, suppliedFilters)) {
                 constructedFilters.push (filter);
             }
         }
-        params = this.extend (params, { 'status-in': constructedFilters.join ('-')});
+        params = this.extend (params, { 'status-in': constructedFilters.join ('-') });
         // console.log(symbol, since, limit, params);
         return this.fetchOrders (symbol, since, limit, params);
     }
 
     async fetchClosedOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
         const suppliedFilters = this.safeString (params, 'status-in', '').split ('-');
-        const constructedFilters = ['FILLED'];
-        const remainingAvailableFilters = ['ACTIVE', 'REJECTED', 'CANCELLED', 'EXPIRED', 'PARTIALLY_FILLED'];
+        const constructedFilters = [ 'FILLED' ];
+        const remainingAvailableFilters = [ 'ACTIVE', 'REJECTED', 'CANCELLED', 'EXPIRED', 'PARTIALLY_FILLED' ];
         for (let i = 0; i < remainingAvailableFilters.length; i++) {
             const filter = remainingAvailableFilters[i];
             if (this.inArray (filter, suppliedFilters)) {
                 constructedFilters.push (filter);
             }
         }
-        params = this.extend (params, { 'status-in': constructedFilters.join ('-')});
+        params = this.extend (params, { 'status-in': constructedFilters.join ('-') });
         return this.fetchOrders (symbol, since, limit, params);
     }
 
     async fetchCanceledOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
         const suppliedFilters = this.safeString (params, 'status-in', '').split ('-');
-        const constructedFilters = ['CANCELLED'];
-        const remainingAvailableFilters = ['ACTIVE', 'REJECTED', 'CANCELLED', 'EXPIRED', 'PARTIALLY_FILLED'];
+        const constructedFilters = [ 'CANCELLED' ];
+        const remainingAvailableFilters = [ 'ACTIVE', 'REJECTED', 'CANCELLED', 'EXPIRED', 'PARTIALLY_FILLED' ];
         for (let i = 0; i < remainingAvailableFilters.length; i++) {
             const filter = remainingAvailableFilters[i];
             if (this.inArray (filter, suppliedFilters)) {
                 constructedFilters.push (filter);
             }
         }
-        params = this.extend (params, { 'status-in': constructedFilters.join ('-')});
+        params = this.extend (params, { 'status-in': constructedFilters.join ('-') });
         return this.fetchOrders (symbol, since, limit, params);
     }
 
@@ -592,46 +872,89 @@ module.exports = class deepwaters extends Exchange {
          * @returns {object} an [order structure]{@link https://docs.ccxt.com/en/latest/manual.html#order-structure}
          */
         await this.loadMarkets ();
+        const durationType = this.safeString (params, 'durationType', 'GOOD_TILL_CANCEL');
         const orderType = type.toUpperCase ();
         const market = this.market (symbol);
         const orderSide = side.toUpperCase ();
+        const customerObjectId = this.safeString (params, 'customerObjectId');
+        const expiresAtMicros = this.safeNumber (params, 'expiresAtMicros', 0);
+        const expiresIn = this.safeValue (params, 'expiresIn', '');
+        const precisionQuantity = this.amountToPrecision (symbol, amount);
+        // {
+        //     "baseAssetID": "string",
+        //     "customerObjectID": "string",
+        //     "durationType": "GOOD_TILL_CANCEL",
+        //     "expiresAtMicros": 0,
+        //     "expiresIn": "string",
+        //     "price": "string",
+        //     "quantity": "string",
+        //     "quoteAssetID": "string",
+        //     "side": "BUY",
+        //     "type": "LIMIT"
+        //   }
         const request = {
+            'baseAssetID': market['baseId'],
+            'durationType': durationType,
+            'customerObjectID': customerObjectId,
             'type': orderType,
             'side': orderSide,
-            'durationType': this.safeString (params, 'durationType', 'GOOD_TILL_CANCEL'),
-            'expiresAtMicros': undefined, // TODO
-            'expiresIn': undefined,       // TODO
-            'baseAssetID': market.baseId,
-            'quoteAssetID': market.quoteId,
-            'price': this.priceToPrecision (symbol, price),
-            'quantity': this.amountToPrecision (symbol, amount),
+            'quoteAssetID': market['quoteId'],
+            'quantity': precisionQuantity,
         };
-        const customerObjectId = this.safeString (params, 'customerObjectId');
-        if (customerObjectId) {
-            request['customerObjectID'] = customerObjectId;
+        if (type === 'limit') {
+            const precisionPrice = this.priceToPrecision (symbol, price);
+            request['price'] = precisionPrice;
+            if (durationType === 'GOOD_TILL_EXPIRY') {
+                request['expiresIn'] = expiresIn ? expiresIn : null;
+                request['expiresAtMicros'] = expiresAtMicros ? expiresAtMicros : null;
+            }
         }
-
-        // sets nonce as 'dwnonce' on self, accessed via getNonce in signing
         await this.fetchNonce ();
         const response = await this.privatePostOrders (request);
         const success = this.safeValue (response, 'success', false);
         if (!success) {
             return this.handleError (response);
         }
+        // Market Order
+        // {
+        //     status: 'FILLED',
+        //     respondedAtMicros: '1677872186295635',
+        //     venueOrderID: '0x85b3e1dd0c9f4609a3b611f991c54c51d85ab510745b11a039af52c0bab46b1a',
+        //     originalQuantity: '1.00',
+        //     quantity: '0.00'
+        // }
+        // Limit Order
         const result = this.safeValue (response, 'result', {});
-        return this.extend (
-            this.parseOrder (result, market),
-            {
-                'type': orderType,
-                'side': orderSide,
-                'symbol': symbol,
-            }
-        );
+        const id = this.safeString (result, 'venueOrderID');
+        const respondedAtMicros = this.safeString (result, 'respondedAtMicros');
+        const timestamp = this.parseNumber (Precise.stringDiv (respondedAtMicros, '1000', 0));
+        const datetime = this.iso8601 (timestamp);
+        const exchangeStatus = this.safeValue (result, 'status');
+        const status = this.parseOrderStatus (exchangeStatus);
+        const originalQuantity = this.safeString (result, 'originalQuantity');
+        const order = {
+            'id': id,
+            'timestamp': timestamp,
+            'datetime': datetime,
+            'status': status,
+            'symbol': symbol,
+            'type': type,
+            'side': side,
+            'amount': originalQuantity,
+            'info': result,
+        };
+        if (exchangeStatus === 'FILLED') {
+            order['filled'] = originalQuantity;
+        }
+        if (type === 'limit') {
+            order['price'] = price;
+        }
+        return this.safeOrder (order);
     }
 
     async fetchOrder (id, symbol = undefined, params = {}) {
         // params and symbol are unused
-        await this.loadMarkets();
+        await this.loadMarkets ();
         params = {
             'id': id,
         };
@@ -667,7 +990,7 @@ module.exports = class deepwaters extends Exchange {
         await this.fetchNonce ();
         params = {
             'id': id,
-        }
+        };
         if (typeof id !== 'string') {
             throw new ArgumentsRequired (this.id + ' cancelOrder () requires a string id');
         }
@@ -683,28 +1006,40 @@ module.exports = class deepwaters extends Exchange {
             return this.handleError (response);
         }
         // Deepwaters doesn't respond with any order information on cancelation
+        const result = this.safeValue (response, 'result');
+        const respondedAtMicros = this.safeValue (result, 'respondedAtMicros');
+        const timestamp = this.parseNumber (Precise.stringDiv (respondedAtMicros, '1000', 0));
+        const datetime = this.iso8601 (timestamp);
         const order = {
             'status': 'canceled',
-        }
-        if (isVenueId) {
-            order['id'] = id;
-        } else {
-            order['clientOrderId'] = id;
-        }
-        return this.parseOrder (order);
+            'id': id,
+            'datetime': datetime,
+            'timestamp': timestamp,
+            'symbol': symbol,
+            'info': result,
+        };
+        return this.safeOrder (order);
     }
 
     async cancelAllOrders (symbol = undefined, params = {}) {
-        await this.loadMarkets();
-        await this.fetchNonce();
+        await this.loadMarkets ();
+        await this.fetchNonce ();
         if (symbol) {
-            const market = this.market(symbol);
+            const market = this.market (symbol);
             const pairParam = {
-                pair: market.id,
-            }
+                'pair': market.id,
+            };
             params = this.extend (params, pairParam);
         }
         const response = await this.privateDeleteOrders (params);
+        // EXAMPLE response
+        // {
+        //     "result": {
+        //       "numCancelled": 0,
+        //       "respondedAtMicros": 0
+        //     },
+        //     "success": true
+        //   }
         const success = this.safeValue (response, 'success', false);
         if (!success) {
             return this.handleError (response);
@@ -713,13 +1048,17 @@ module.exports = class deepwaters extends Exchange {
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
+        /**
+         * @method
+         * @name deepwaters#sign
+         * @description Signs an api request to deepwaters exchange
+         * @see https://rest.docs.api.deepwaters.xyz/cutting_edge/index.html
+        */
         // Get array of params which need to be substituted in path
         const pathParams = this.extractParams (path);
-
         // this is the path with any variable segments substituted from provided params
         // currently only relevant for 'pairs/{marketId}/orderbook', which isn't signed
         path = '/' + this.implodeParams (path, params);
-
         // Remove params which were substituted in path, important for signing
         params = this.omit (params, pathParams);
         let nonce = '';
@@ -747,7 +1086,7 @@ module.exports = class deepwaters extends Exchange {
                 headers = this.extend (headers, postDeleteHeaders);
             }
             const message = method + '/rest/v1' + path.toLowerCase () + timestamp + nonce + bodyString;
-            // console.log(message);
+            // calculate signature
             const signature = this.signHash (this.hash (message, 'keccak'), this.secret);
             signature.v = signature.v - 27;
             let vByte = signature.v.toString (16);
@@ -756,14 +1095,13 @@ module.exports = class deepwaters extends Exchange {
             }
             const signatureString = signature.r + signature.s.slice (2) + vByte;
             const sigHeaders = {
-                'X-DW-APIKEY': this['apiKey'],
+                'X-DW-APIKEY': this.apiKey,
                 'X-DW-TSUS': timestamp,
                 'X-DW-SIGHEX': signatureString,
             };
             headers = this.extend (headers, sigHeaders);
         }
-        let url = this.urls['api'][api] + path;
-        // console.log({ 'url': url, 'method': method, 'body': bodyString, 'headers': headers });
+        const url = this.urls['api'][api] + path;
         if (bodyString.length) {
             return { 'url': url, 'method': method, 'body': bodyString, 'headers': headers };
         }
@@ -775,5 +1113,23 @@ module.exports = class deepwaters extends Exchange {
         const code = this.safeString (response, 'code', '');
         const status = this.safeString (response, 'status', '');
         throw new ExchangeError (code + ': ' + error + ' ' + status);
+    }
+
+    async fetchTime (params = {}) {
+        /**
+         * @method
+         * @name deepwaters#fetchTime
+         * @description fetches the current integer timestamp in milliseconds from the deepwaters server
+         * @param {object} params extra parameters specific to the deepwaters api endpoint
+         * @returns {int} the current integer timestamp in milliseconds from the deepwaters server
+         */
+        const response = await this.publicGetTime ();
+        const success = this.safeValue (response, 'success', false);
+        if (!success) {
+            return this.handleError (response);
+        }
+        const timestampMicros = this.safeValue (response, 'timestampMicros');
+        const timestamp = this.parseNumber (Precise.stringDiv (timestampMicros, '1000', 0));
+        return timestamp;
     }
 };
