@@ -98,6 +98,7 @@ import coinsph from  './src/coinsph.js'
 import coinspot from  './src/coinspot.js'
 import cryptocom from  './src/cryptocom.js'
 import currencycom from  './src/currencycom.js'
+import deepwaters from './src/deepwaters.js'
 import delta from  './src/delta.js'
 import deribit from  './src/deribit.js'
 import digifinex from  './src/digifinex.js'
@@ -269,6 +270,7 @@ const exchanges = {
     'coinspot':               coinspot,
     'cryptocom':              cryptocom,
     'currencycom':            currencycom,
+    'deepwaters':             deepwaters,
     'delta':                  delta,
     'deribit':                deribit,
     'digifinex':              digifinex,
