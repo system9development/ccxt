@@ -94,6 +94,9 @@ function createImplicitMethods(){
         const typeScriptMethods = camelCaseMethods.map (method => {
             return `${IDEN}${method} (params?: {}): Promise<implicitReturnType>;`
         });
+        if (exchange === 'deepwaters') {
+            typeScriptMethods.push(`${IDEN}dwnonce?: number;`);
+        }
         const phpMethods = underscoreMethods.concat (camelCaseMethods).map ((method, idx) => {
             const i = idx % underscoreMethods.length
             const context = storedPhpContext[exchange][i]
