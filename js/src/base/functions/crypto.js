@@ -30,8 +30,8 @@ function ecdsa(request, secret, curve, prehash = null) {
     }
     const signature = curve.sign(request, secret);
     return {
-        'r': signature.r.toString(16),
-        's': signature.s.toString(16),
+        'r': signature.r.toString(16).padStart(64, '0'),
+        's': signature.s.toString(16).padStart(64, '0'),
         'v': signature.recovery,
     };
 }
