@@ -56,6 +56,7 @@ import binancecoinm from  './src/binancecoinm.js'
 import binanceus from  './src/binanceus.js'
 import binanceusdm from  './src/binanceusdm.js'
 import bit2c from  './src/bit2c.js'
+import bitazza from  './src/bitazza.js'
 import bitbank from  './src/bitbank.js'
 import bitbay from  './src/bitbay.js'
 import bitbns from  './src/bitbns.js'
@@ -100,6 +101,7 @@ import coinsph from  './src/coinsph.js'
 import coinspot from  './src/coinspot.js'
 import cryptocom from  './src/cryptocom.js'
 import currencycom from  './src/currencycom.js'
+import deepwaters from  './src/deepwaters.js'
 import delta from  './src/delta.js'
 import deribit from  './src/deribit.js'
 import digifinex from  './src/digifinex.js'
@@ -139,6 +141,7 @@ import okcoin from  './src/okcoin.js'
 import okex from  './src/okex.js'
 import okex5 from  './src/okex5.js'
 import okx from  './src/okx.js'
+import osl from  './src/osl.js'
 import paymium from  './src/paymium.js'
 import phemex from  './src/phemex.js'
 import poloniex from  './src/poloniex.js'
@@ -229,6 +232,7 @@ const exchanges = {
     'binanceus':              binanceus,
     'binanceusdm':            binanceusdm,
     'bit2c':                  bit2c,
+    'bitazza':                bitazza,
     'bitbank':                bitbank,
     'bitbay':                 bitbay,
     'bitbns':                 bitbns,
@@ -273,6 +277,7 @@ const exchanges = {
     'coinspot':               coinspot,
     'cryptocom':              cryptocom,
     'currencycom':            currencycom,
+    'deepwaters':             deepwaters,
     'delta':                  delta,
     'deribit':                deribit,
     'digifinex':              digifinex,
@@ -312,6 +317,7 @@ const exchanges = {
     'okex':                   okex,
     'okex5':                  okex5,
     'okx':                    okx,
+    'osl':                    osl,
     'paymium':                paymium,
     'phemex':                 phemex,
     'poloniex':               poloniex,
@@ -473,6 +479,7 @@ export {
     binanceus,
     binanceusdm,
     bit2c,
+    bitazza,
     bitbank,
     bitbay,
     bitbns,
@@ -517,6 +524,7 @@ export {
     coinspot,
     cryptocom,
     currencycom,
+    deepwaters,
     delta,
     deribit,
     digifinex,
@@ -556,6 +564,7 @@ export {
     okex,
     okex5,
     okx,
+    osl,
     paymium,
     phemex,
     poloniex,

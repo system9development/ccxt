@@ -63,6 +63,7 @@ from ccxt.async_support.binancecoinm import binancecoinm                        
 from ccxt.async_support.binanceus import binanceus                              # noqa: F401
 from ccxt.async_support.binanceusdm import binanceusdm                          # noqa: F401
 from ccxt.async_support.bit2c import bit2c                                      # noqa: F401
+from ccxt.async_support.bitazza import bitazza                                  # noqa: F401
 from ccxt.async_support.bitbank import bitbank                                  # noqa: F401
 from ccxt.async_support.bitbay import bitbay                                    # noqa: F401
 from ccxt.async_support.bitbns import bitbns                                    # noqa: F401
@@ -107,6 +108,7 @@ from ccxt.async_support.coinsph import coinsph                                  
 from ccxt.async_support.coinspot import coinspot                                # noqa: F401
 from ccxt.async_support.cryptocom import cryptocom                              # noqa: F401
 from ccxt.async_support.currencycom import currencycom                          # noqa: F401
+from ccxt.async_support.deepwaters import deepwaters                            # noqa: F401
 from ccxt.async_support.delta import delta                                      # noqa: F401
 from ccxt.async_support.deribit import deribit                                  # noqa: F401
 from ccxt.async_support.digifinex import digifinex                              # noqa: F401
@@ -146,6 +148,7 @@ from ccxt.async_support.okcoin import okcoin                                    
 from ccxt.async_support.okex import okex                                        # noqa: F401
 from ccxt.async_support.okex5 import okex5                                      # noqa: F401
 from ccxt.async_support.okx import okx                                          # noqa: F401
+from ccxt.async_support.osl import osl                                          # noqa: F401
 from ccxt.async_support.paymium import paymium                                  # noqa: F401
 from ccxt.async_support.phemex import phemex                                    # noqa: F401
 from ccxt.async_support.poloniex import poloniex                                # noqa: F401
@@ -177,6 +180,7 @@ exchanges = [
     'binanceus',
     'binanceusdm',
     'bit2c',
+    'bitazza',
     'bitbank',
     'bitbay',
     'bitbns',
@@ -221,6 +225,7 @@ exchanges = [
     'coinspot',
     'cryptocom',
     'currencycom',
+    'deepwaters',
     'delta',
     'deribit',
     'digifinex',
@@ -260,6 +265,7 @@ exchanges = [
     'okex',
     'okex5',
     'okx',
+    'osl',
     'paymium',
     'phemex',
     'poloniex',

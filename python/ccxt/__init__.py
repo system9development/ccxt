@@ -83,6 +83,7 @@ from ccxt.binancecoinm import binancecoinm                            # noqa: F4
 from ccxt.binanceus import binanceus                                  # noqa: F401
 from ccxt.binanceusdm import binanceusdm                              # noqa: F401
 from ccxt.bit2c import bit2c                                          # noqa: F401
+from ccxt.bitazza import bitazza                                      # noqa: F401
 from ccxt.bitbank import bitbank                                      # noqa: F401
 from ccxt.bitbay import bitbay                                        # noqa: F401
 from ccxt.bitbns import bitbns                                        # noqa: F401
@@ -127,6 +128,7 @@ from ccxt.coinsph import coinsph                                      # noqa: F4
 from ccxt.coinspot import coinspot                                    # noqa: F401
 from ccxt.cryptocom import cryptocom                                  # noqa: F401
 from ccxt.currencycom import currencycom                              # noqa: F401
+from ccxt.deepwaters import deepwaters                                # noqa: F401
 from ccxt.delta import delta                                          # noqa: F401
 from ccxt.deribit import deribit                                      # noqa: F401
 from ccxt.digifinex import digifinex                                  # noqa: F401
@@ -166,6 +168,7 @@ from ccxt.okcoin import okcoin                                        # noqa: F4
 from ccxt.okex import okex                                            # noqa: F401
 from ccxt.okex5 import okex5                                          # noqa: F401
 from ccxt.okx import okx                                              # noqa: F401
+from ccxt.osl import osl                                              # noqa: F401
 from ccxt.paymium import paymium                                      # noqa: F401
 from ccxt.phemex import phemex                                        # noqa: F401
 from ccxt.poloniex import poloniex                                    # noqa: F401
@@ -197,6 +200,7 @@ exchanges = [
     'binanceus',
     'binanceusdm',
     'bit2c',
+    'bitazza',
     'bitbank',
     'bitbay',
     'bitbns',
@@ -241,6 +245,7 @@ exchanges = [
     'coinspot',
     'cryptocom',
     'currencycom',
+    'deepwaters',
     'delta',
     'deribit',
     'digifinex',
@@ -280,6 +285,7 @@ exchanges = [
     'okex',
     'okex5',
     'okx',
+    'osl',
     'paymium',
     'phemex',
     'poloniex',
