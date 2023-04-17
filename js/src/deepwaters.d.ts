@@ -1,23 +1,23 @@
-import Exchange from './base/Exchange.js';
+import Exchange from './abstract/deepwaters.js';
 export default class deepwaters extends Exchange {
     describe(): any;
     fetchBidsAsks(symbols?: any, params?: {}): Promise<any>;
     fetchTicker(symbol: any, params?: {}): Promise<any>;
     fetchTickers(symbols?: any, params?: {}): Promise<any>;
-    fetchMarkets(params?: {}): Promise<void | any[]>;
-    getNonce(): any;
+    fetchMarkets(params?: {}): Promise<any[]>;
+    getNonce(): number;
     fetchNonce(): Promise<void>;
-    fetchCurrencies(params?: {}): Promise<void | {}>;
+    fetchCurrencies(params?: {}): Promise<{}>;
     parseBalance(response: any): import("./base/types.js").Balances;
     parseOrderStatus(status: any): string;
     parseOrder(order: any, market?: any): any;
-    fetchBalance(params?: {}): Promise<void | import("./base/types.js").Balances>;
-    fetchOrderBook(symbol: any, limit?: any, params?: {}): Promise<void | import("./base/types.js").OrderBook>;
-    fetchOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<void | import("./base/types.js").Order[]>;
-    fetchMyTrades(symbol?: any, since?: any, limit?: any, params?: {}): Promise<void | any[]>;
-    fetchOpenOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<void | import("./base/types.js").Order[]>;
-    fetchClosedOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<void | import("./base/types.js").Order[]>;
-    fetchCanceledOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<void | import("./base/types.js").Order[]>;
+    fetchBalance(params?: {}): Promise<import("./base/types.js").Balances>;
+    fetchOrderBook(symbol: any, limit?: any, params?: {}): Promise<import("./base/types.js").OrderBook>;
+    fetchOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<import("./base/types.js").Order[]>;
+    fetchMyTrades(symbol?: any, since?: any, limit?: any, params?: {}): Promise<any[]>;
+    fetchOpenOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<import("./base/types.js").Order[]>;
+    fetchClosedOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<import("./base/types.js").Order[]>;
+    fetchCanceledOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<import("./base/types.js").Order[]>;
     createOrder(symbol: any, type: any, side: any, amount: any, price?: any, params?: {}): Promise<any>;
     fetchOrder(id: any, symbol?: any, params?: {}): Promise<any>;
     cancelOrder(id: any, symbol?: any, params?: {}): Promise<any>;
@@ -29,5 +29,10 @@ export default class deepwaters extends Exchange {
         headers: any;
     };
     handleError(response?: {}): void;
-    fetchTime(params?: {}): Promise<number | void>;
+    fetchTime(params?: {}): Promise<number>;
+    signHash(hash: any, privateKey: any): {
+        r: string;
+        s: string;
+        v: number;
+    };
 }

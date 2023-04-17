@@ -15,6 +15,7 @@ interface Exchange {
     privateDeleteOrders(params?: {}): Promise<implicitReturnType>;
     privateDeleteOrdersByVenueOrderIdId(params?: {}): Promise<implicitReturnType>;
     privateDeleteOrdersByCustomerObjectIdId(params?: {}): Promise<implicitReturnType>;
+    dwnonce?: number;
 }
 declare abstract class Exchange extends _Exchange {
 }

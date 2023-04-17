@@ -1,4 +1,4 @@
-import Exchange from './base/Exchange.js';
+import Exchange from './abstract/osl.js';
 export default class osl extends Exchange {
     describe(): any;
     costToPrecision(symbol: any, cost: any): any;

@@ -355,4 +355,4 @@ export default class osl extends Exchange {
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }
-};
+}
