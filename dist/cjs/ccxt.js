@@ -22,6 +22,7 @@ var binancecoinm = require('./src/binancecoinm.js');
 var binanceus = require('./src/binanceus.js');
 var binanceusdm = require('./src/binanceusdm.js');
 var bit2c = require('./src/bit2c.js');
+var bitazza = require('./src/bitazza.js');
 var bitbank = require('./src/bitbank.js');
 var bitbay = require('./src/bitbay.js');
 var bitbns = require('./src/bitbns.js');
@@ -66,6 +67,7 @@ var coinsph = require('./src/coinsph.js');
 var coinspot = require('./src/coinspot.js');
 var cryptocom = require('./src/cryptocom.js');
 var currencycom = require('./src/currencycom.js');
+var deepwaters = require('./src/deepwaters.js');
 var delta = require('./src/delta.js');
 var deribit = require('./src/deribit.js');
 var digifinex = require('./src/digifinex.js');
@@ -105,6 +107,7 @@ var okcoin = require('./src/okcoin.js');
 var okex = require('./src/okex.js');
 var okex5 = require('./src/okex5.js');
 var okx = require('./src/okx.js');
+var osl = require('./src/osl.js');
 var paymium = require('./src/paymium.js');
 var phemex = require('./src/phemex.js');
 var poloniex = require('./src/poloniex.js');
@@ -196,6 +199,7 @@ const exchanges = {
     'binanceus': binanceus,
     'binanceusdm': binanceusdm,
     'bit2c': bit2c,
+    'bitazza': bitazza,
     'bitbank': bitbank,
     'bitbay': bitbay,
     'bitbns': bitbns,
@@ -240,6 +244,7 @@ const exchanges = {
     'coinspot': coinspot,
     'cryptocom': cryptocom,
     'currencycom': currencycom,
+    'deepwaters': deepwaters,
     'delta': delta,
     'deribit': deribit,
     'digifinex': digifinex,
@@ -279,6 +284,7 @@ const exchanges = {
     'okex': okex,
     'okex5': okex5,
     'okx': okx,
+    'osl': osl,
     'paymium': paymium,
     'phemex': phemex,
     'poloniex': poloniex,
@@ -407,6 +413,7 @@ exports.binancecoinm = binancecoinm;
 exports.binanceus = binanceus;
 exports.binanceusdm = binanceusdm;
 exports.bit2c = bit2c;
+exports.bitazza = bitazza;
 exports.bitbank = bitbank;
 exports.bitbay = bitbay;
 exports.bitbns = bitbns;
@@ -451,6 +458,7 @@ exports.coinsph = coinsph;
 exports.coinspot = coinspot;
 exports.cryptocom = cryptocom;
 exports.currencycom = currencycom;
+exports.deepwaters = deepwaters;
 exports.delta = delta;
 exports.deribit = deribit;
 exports.digifinex = digifinex;
@@ -490,6 +498,7 @@ exports.okcoin = okcoin;
 exports.okex = okex;
 exports.okex5 = okex5;
 exports.okx = okx;
+exports.osl = osl;
 exports.paymium = paymium;
 exports.phemex = phemex;
 exports.poloniex = poloniex;
