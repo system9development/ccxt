@@ -586,7 +586,8 @@ class coinstore extends Exchange {
         }
         $request['timestamp'] = $this->milliseconds();
         $response = $this->privatePostApiTradeOrderPlace (array_merge($request, $params));
-        return $this->parse_submitted_order($request, $response);
+        $responseData = $this->safe_value($response, 'data', array());
+        return $this->parse_submitted_order($request, $responseData);
     }
 
     public function cancel_order($id, $symbol = null, $params = array ()) {
@@ -612,9 +613,9 @@ class coinstore extends Exchange {
 
     public function cancel_all_orders($symbol = null, $params = array ()) {
         /**
-         * cancel all open $orders
+         * cancel all open orders
          * @see https://coinstore-openapi.github.io/en/index.html#one-click-cancellation
-         * @param {string|null} [$symbol] unified $market $symbol, only $orders in the $market of this $symbol are cancelled when $symbol is not null
+         * @param {string|null} [$symbol] unified $market $symbol, only orders in the $market of this $symbol are cancelled when $symbol is not null
          * @param {array} [$params] extra parameters specific to the coinstore api endpoint
          * @return {[array]} a list of ~@link https://docs.ccxt.com/#/?id=order-structure order structures~
          */
@@ -624,20 +625,21 @@ class coinstore extends Exchange {
             $market = $this->market($symbol);
             $request['symbol'] = $market['id'];
         }
-        // $timestamp = Date.now ();
-        // The $response for this endpoint is empty, so to return the correct information we should
-        // $response =
-        $this->privatePostApiTradeOrderCancelAll (array_merge($request, $params));
-        // The endpoint used by fetchOrders only returns open $orders apparently
-        // They don't have a documented endpoint for all $orders
-        // try {
-        //     $orders = $this->fetch_orders($symbol, $timestamp);
-        //     return $this->filter_by($orders, 'status', 'canceled');
-        // } catch (Exception $e) {
-        //     // return an empty array; the fetchOrders call failed, but cancelation succeeded
-        //     return array();
-        // }
-        return array();
+        // The response for this endpoint is empty, so to return the correct information we should use the fetchOrders endpoint
+        $cancelResponse = $this->privatePostApiTradeOrderCancelAll (array_merge($request, $params));
+        $canceledOrderIds = $this->safe_value($this->safe_value($cancelResponse, 'data', array()), 'canceling', array());
+        // Stringify these ids
+        for ($i = 0; $i < count($canceledOrderIds); $i++) {
+            $canceledOrderIds[$i] = (string) $canceledOrderIds[$i];
+        }
+        $endTimestamp = Date.now ();
+        try {
+            $orderResponse = $this->fetch_orders($symbol, null, null, array( 'endTime' => $endTimestamp, 'ordType' => 'LIMIT' ));
+            return is_array($this->filter_by_array($orderResponse, 'id', $canceledOrderIds)) ? array_values($this->filter_by_array($orderResponse, 'id', $canceledOrderIds)) : array();
+        } catch (Exception $e) {
+            // return an empty array; the fetchOrders call failed, but cancelation succeeded
+            return array();
+        }
     }
 
     public function parse_canceled_order($request, $response) {
@@ -699,7 +701,6 @@ class coinstore extends Exchange {
 
     public function fetch_orders($symbol = null, $since = null, $limit = null, $params = array ()) {
         /**
-         * @namecoinstore#fetchOrders
          * @see https://coinstore-openapi.github.io/en/#get-current-$orders-v2
          * fetch all open $orders orders
          * @param {string|null} $symbol unified $market $symbol
@@ -716,16 +717,16 @@ class coinstore extends Exchange {
             $request['symbol'] = $market['id'];
         }
         if ($limit !== null) {
-            $request['size'] = $limit;
+            // set to max, because we use this for fetchClosedOrders, but there's no status filter
+            $request['size'] = 100;
+        }
+        if ($since !== null) {
+            $request['startTime'] = $since;
         }
         $response = $this->privateGetApiTradeOrderHistoryOrders (array_merge($request, $params));
         $data = $this->safe_value($response, 'data');
         $orders = $this->safe_value($data, 'list', array());
-        $parsedOrders = $this->parse_orders($orders, $market);
-        if ($since !== null || $limit !== null) {
-            return $this->filter_by_since_limit($parsedOrders, $since, $limit);
-        }
-        return $parsedOrders;
+        return $this->parse_orders($orders, $market, $since, $limit);
     }
 
     public function parse_order($order, $market = null) {
@@ -849,11 +850,10 @@ class coinstore extends Exchange {
         }
         $response = $this->privateGetApiV2TradeOrderActive (array_merge($request, $params));
         $data = $this->safe_value($response, 'data');
-        $parsedOrders = $this->parse_orders($data, $market);
         if ($since !== null || $limit !== null) {
-            return $this->filter_by_since_limit($parsedOrders, $since, $limit);
+            $data = $this->filter_by_since_limit($data, $since, $limit);
         }
-        return $parsedOrders;
+        return $this->parse_orders($data, $market);
     }
 
     public function fetch_closed_orders($symbol = null, $since = null, $limit = null, $params = array ()) {
@@ -865,7 +865,7 @@ class coinstore extends Exchange {
          * @return {[array]} a list of ~@link https://docs.ccxt.com/#/?id=order-structure order structures~
          */
         $parsedOrders = $this->fetch_orders($symbol, null, null, $params);
-        $filteredOrders = $this->filter_by_array($parsedOrders, 'status', array( 'canceled', 'rejected', 'expired', 'closed' ));
+        $filteredOrders = $this->filter_by_array($parsedOrders, 'status', array( 'canceled', 'rejected', 'expired', 'closed' ), false);
         if ($since !== null || $limit !== null) {
             return $this->filter_by_since_limit($filteredOrders, $since, $limit);
         }
@@ -930,8 +930,7 @@ class coinstore extends Exchange {
         $headers['Content-Type'] = 'application/json';
         if ($api === 'private') {
             $this->check_required_credentials();
-            $timestamp = $this->milliseconds();
-            // $timestamp = 1691200987053;
+            $timestamp = $this->milliseconds() + 2000;
             $headers['X-CS-EXPIRES'] = (string) $timestamp;
             $headers['X-CS-APIKEY'] = $this->apiKey;
             $expiresKey = (int) floor($timestamp / 30000);

@@ -651,7 +651,7 @@ export default class coinstore extends Exchange {
         for (let i = 0; i < canceledOrderIds.length; i++) {
             canceledOrderIds[i] = canceledOrderIds[i].toString ();
         }
-        const endTimestamp = Date.now();
+        const endTimestamp = Date.now ();
         try {
             const orderResponse = await this.fetchOrders (symbol, undefined, undefined, { 'endTime': endTimestamp, 'ordType': 'LIMIT' });
             return Object.values (this.filterByArray (orderResponse, 'id', canceledOrderIds));

@@ -14,13 +14,13 @@ export default class coinstore extends Exchange {
     parseBalance(response: any): import("./base/types.js").Balances;
     createOrder(symbol: any, type: any, side: any, amount: any, price?: any, params?: {}): Promise<any>;
     cancelOrder(id: any, symbol?: any, params?: {}): Promise<any>;
-    cancelAllOrders(symbol?: any, params?: {}): Promise<any[]>;
+    cancelAllOrders(symbol?: any, params?: {}): Promise<unknown[]>;
     parseCanceledOrder(request: any, response: any): any;
     parseSubmittedOrder(request: any, response: any): any;
-    fetchOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<any>;
+    fetchOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<import("./base/types.js").Order[]>;
     parseOrder(order: any, market?: any): any;
     parseOrderStatus(status: any): string;
-    fetchOpenOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<any>;
+    fetchOpenOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<import("./base/types.js").Order[]>;
     fetchClosedOrders(symbol?: any, since?: any, limit?: any, params?: {}): Promise<any>;
     fetchMyTrades(symbol?: any, since?: any, limit?: any, params?: {}): Promise<import("./base/types.js").Trade[]>;
     sign(path: any, api?: string, method?: string, params?: {}, headers?: {}, body?: any): {

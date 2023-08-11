@@ -6,7 +6,7 @@ var Precise = require('./base/Precise.js');
 var sha256 = require('./static_dependencies/noble-hashes/sha256.js');
 var number = require('./base/functions/number.js');
 
-// ----------------------------------------------------------------------------
+//  ---------------------------------------------------------------------------
 //  ---------------------------------------------------------------------------
 // const coinstoreMarketsByNumericId = {};
 class coinstore extends coinstore$1 {
@@ -45,8 +45,8 @@ class coinstore extends coinstore$1 {
                 'fetchOpenInterest': false,
                 'fetchOpenOrders': 'emulated',
                 'fetchOrder': false,
-                'fetchOrders': true,
                 'fetchOrderBook': true,
+                'fetchOrders': true,
                 'fetchPositions': false,
                 'fetchTicker': false,
                 'fetchTickers': true,
@@ -590,7 +590,8 @@ class coinstore extends coinstore$1 {
         }
         request['timestamp'] = this.milliseconds();
         const response = await this.privatePostApiTradeOrderPlace(this.extend(request, params));
-        return this.parseSubmittedOrder(request, response);
+        const responseData = this.safeValue(response, 'data', {});
+        return this.parseSubmittedOrder(request, responseData);
     }
     async cancelOrder(id, symbol = undefined, params = {}) {
         /**
@@ -617,7 +618,7 @@ class coinstore extends coinstore$1 {
     async cancelAllOrders(symbol = undefined, params = {}) {
         /**
          * @method
-         * @name coinstorex#cancelAllOrders
+         * @name coinstore#cancelAllOrders
          * @description cancel all open orders
          * @see https://coinstore-openapi.github.io/en/index.html#one-click-cancellation
          * @param {string|undefined} [symbol] unified market symbol, only orders in the market of this symbol are cancelled when symbol is not undefined
@@ -630,20 +631,22 @@ class coinstore extends coinstore$1 {
             const market = this.market(symbol);
             request['symbol'] = market['id'];
         }
-        // const timestamp = Date.now ();
-        // The response for this endpoint is empty, so to return the correct information we should
-        // const response =
-        await this.privatePostApiTradeOrderCancelAll(this.extend(request, params));
-        // The endpoint used by fetchOrders only returns open orders apparently
-        // They don't have a documented endpoint for all orders
-        // try {
-        //     const orders = await this.fetchOrders (symbol, timestamp);
-        //     return this.filterBy (orders, 'status', 'canceled');
-        // } catch (e) {
-        //     // return an empty array; the fetchOrders call failed, but cancelation succeeded
-        //     return [];
-        // }
-        return [];
+        // The response for this endpoint is empty, so to return the correct information we should use the fetchOrders endpoint
+        const cancelResponse = await this.privatePostApiTradeOrderCancelAll(this.extend(request, params));
+        const canceledOrderIds = this.safeValue(this.safeValue(cancelResponse, 'data', {}), 'canceling', []);
+        // Stringify these ids
+        for (let i = 0; i < canceledOrderIds.length; i++) {
+            canceledOrderIds[i] = canceledOrderIds[i].toString();
+        }
+        const endTimestamp = Date.now();
+        try {
+            const orderResponse = await this.fetchOrders(symbol, undefined, undefined, { 'endTime': endTimestamp, 'ordType': 'LIMIT' });
+            return Object.values(this.filterByArray(orderResponse, 'id', canceledOrderIds));
+        }
+        catch (e) {
+            // return an empty array; the fetchOrders call failed, but cancelation succeeded
+            return [];
+        }
     }
     parseCanceledOrder(request, response) {
         // request:
@@ -703,7 +706,7 @@ class coinstore extends coinstore$1 {
     async fetchOrders(symbol = undefined, since = undefined, limit = undefined, params = {}) {
         /**
          * @method
-         * @namecoinstore#fetchOrders
+         * @name coinstore#fetchOrders
          * @see https://coinstore-openapi.github.io/en/#get-current-orders-v2
          * @description fetch all open orders orders
          * @param {string|undefined} symbol unified market symbol
@@ -720,16 +723,16 @@ class coinstore extends coinstore$1 {
             request['symbol'] = market['id'];
         }
         if (limit !== undefined) {
-            request['size'] = limit;
+            // set to max, because we use this for fetchClosedOrders, but there's no status filter
+            request['size'] = 100;
+        }
+        if (since !== undefined) {
+            request['startTime'] = since;
         }
         const response = await this.privateGetApiTradeOrderHistoryOrders(this.extend(request, params));
         const data = this.safeValue(response, 'data');
         const orders = this.safeValue(data, 'list', []);
-        const parsedOrders = this.parseOrders(orders, market);
-        if (since !== undefined || limit !== undefined) {
-            return this.filterBySinceLimit(parsedOrders, since, limit);
-        }
-        return parsedOrders;
+        return this.parseOrders(orders, market, since, limit);
     }
     parseOrder(order, market = undefined) {
         // history response format:
@@ -851,12 +854,11 @@ class coinstore extends coinstore$1 {
             request['symbol'] = market['id'];
         }
         const response = await this.privateGetApiV2TradeOrderActive(this.extend(request, params));
-        const data = this.safeValue(response, 'data');
-        const parsedOrders = this.parseOrders(data, market);
+        let data = this.safeValue(response, 'data');
         if (since !== undefined || limit !== undefined) {
-            return this.filterBySinceLimit(parsedOrders, since, limit);
+            data = this.filterBySinceLimit(data, since, limit);
         }
-        return parsedOrders;
+        return this.parseOrders(data, market);
     }
     async fetchClosedOrders(symbol = undefined, since = undefined, limit = undefined, params = {}) {
         /**
@@ -869,7 +871,7 @@ class coinstore extends coinstore$1 {
          * @returns {[object]} a list of [order structures]{@link https://docs.ccxt.com/#/?id=order-structure}
          */
         const parsedOrders = await this.fetchOrders(symbol, undefined, undefined, params);
-        const filteredOrders = this.filterByArray(parsedOrders, 'status', ['canceled', 'rejected', 'expired', 'closed']);
+        const filteredOrders = this.filterByArray(parsedOrders, 'status', ['canceled', 'rejected', 'expired', 'closed'], false);
         if (since !== undefined || limit !== undefined) {
             return this.filterBySinceLimit(filteredOrders, since, limit);
         }
@@ -937,8 +939,7 @@ class coinstore extends coinstore$1 {
         headers['Content-Type'] = 'application/json';
         if (api === 'private') {
             this.checkRequiredCredentials();
-            const timestamp = this.milliseconds();
-            // let timestamp = 1691200987053;
+            const timestamp = this.milliseconds() + 2000;
             headers['X-CS-EXPIRES'] = timestamp.toString();
             headers['X-CS-APIKEY'] = this.apiKey;
             const expiresKey = Math.floor(timestamp / 30000);

@@ -568,7 +568,8 @@ class coinstore(Exchange):
             request['ordQty'] = self.amount_to_precision(symbol, amount)
         request['timestamp'] = self.milliseconds()
         response = await self.privatePostApiTradeOrderPlace(self.extend(request, params))
-        return self.parse_submitted_order(request, response)
+        responseData = self.safe_value(response, 'data', {})
+        return self.parse_submitted_order(request, responseData)
 
     async def cancel_order(self, id, symbol=None, params={}):
         """
@@ -603,20 +604,19 @@ class coinstore(Exchange):
         if symbol:
             market = self.market(symbol)
             request['symbol'] = market['id']
-        # timestamp = Date.now()
-        # The response for self endpoint is empty, so to return the correct information we should
-        # response =
-        await self.privatePostApiTradeOrderCancelAll(self.extend(request, params))
-        # The endpoint used by fetchOrders only returns open orders apparently
-        # They don't have a documented endpoint for all orders
-        # try:
-        #     orders = await self.fetch_orders(symbol, timestamp)
-        #     return self.filter_by(orders, 'status', 'canceled')
-        # except Exception as e:
-        #     # return an empty array; the fetchOrders call failed, but cancelation succeeded
-        #     return []
-        # }
-        return []
+        # The response for self endpoint is empty, so to return the correct information we should use the fetchOrders endpoint
+        cancelResponse = await self.privatePostApiTradeOrderCancelAll(self.extend(request, params))
+        canceledOrderIds = self.safe_value(self.safe_value(cancelResponse, 'data', {}), 'canceling', [])
+        # Stringify these ids
+        for i in range(0, len(canceledOrderIds)):
+            canceledOrderIds[i] = str(canceledOrderIds[i])
+        endTimestamp = Date.now()
+        try:
+            orderResponse = await self.fetch_orders(symbol, None, None, {'endTime': endTimestamp, 'ordType': 'LIMIT'})
+            return list(self.filter_by_array(orderResponse, 'id', canceledOrderIds).values())
+        except Exception as e:
+            # return an empty array; the fetchOrders call failed, but cancelation succeeded
+            return []
 
     def parse_canceled_order(self, request, response):
         # request:
@@ -675,7 +675,6 @@ class coinstore(Exchange):
 
     async def fetch_orders(self, symbol=None, since=None, limit=None, params={}):
         """
-         * @namecoinstore#fetchOrders
         see https://coinstore-openapi.github.io/en/#get-current-orders-v2
         fetch all open orders orders
         :param str|None symbol: unified market symbol
@@ -691,14 +690,14 @@ class coinstore(Exchange):
             market = self.market(symbol)
             request['symbol'] = market['id']
         if limit is not None:
-            request['size'] = limit
+            # set to max, because we use self for fetchClosedOrders, but there's no status filter
+            request['size'] = 100
+        if since is not None:
+            request['startTime'] = since
         response = await self.privateGetApiTradeOrderHistoryOrders(self.extend(request, params))
         data = self.safe_value(response, 'data')
         orders = self.safe_value(data, 'list', [])
-        parsedOrders = self.parse_orders(orders, market)
-        if since is not None or limit is not None:
-            return self.filter_by_since_limit(parsedOrders, since, limit)
-        return parsedOrders
+        return self.parse_orders(orders, market, since, limit)
 
     def parse_order(self, order, market=None):
         # history response format:
@@ -817,10 +816,9 @@ class coinstore(Exchange):
             request['symbol'] = market['id']
         response = await self.privateGetApiV2TradeOrderActive(self.extend(request, params))
         data = self.safe_value(response, 'data')
-        parsedOrders = self.parse_orders(data, market)
         if since is not None or limit is not None:
-            return self.filter_by_since_limit(parsedOrders, since, limit)
-        return parsedOrders
+            data = self.filter_by_since_limit(data, since, limit)
+        return self.parse_orders(data, market)
 
     async def fetch_closed_orders(self, symbol=None, since=None, limit=None, params={}):
         """
@@ -831,7 +829,7 @@ class coinstore(Exchange):
         :returns [dict]: a list of `order structures <https://docs.ccxt.com/#/?id=order-structure>`
         """
         parsedOrders = await self.fetch_orders(symbol, None, None, params)
-        filteredOrders = self.filter_by_array(parsedOrders, 'status', ['canceled', 'rejected', 'expired', 'closed'])
+        filteredOrders = self.filter_by_array(parsedOrders, 'status', ['canceled', 'rejected', 'expired', 'closed'], False)
         if since is not None or limit is not None:
             return self.filter_by_since_limit(filteredOrders, since, limit)
         return filteredOrders
@@ -890,8 +888,7 @@ class coinstore(Exchange):
         headers['Content-Type'] = 'application/json'
         if api == 'private':
             self.check_required_credentials()
-            timestamp = self.milliseconds()
-            # timestamp = 1691200987053
+            timestamp = self.milliseconds() + 2000
             headers['X-CS-EXPIRES'] = str(timestamp)
             headers['X-CS-APIKEY'] = self.apiKey
             expiresKey = int(math.floor(timestamp / 30000))
