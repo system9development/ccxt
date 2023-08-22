@@ -126,6 +126,7 @@ from ccxt.coinmate import coinmate                                    # noqa: F4
 from ccxt.coinone import coinone                                      # noqa: F401
 from ccxt.coinsph import coinsph                                      # noqa: F401
 from ccxt.coinspot import coinspot                                    # noqa: F401
+from ccxt.coinstore import coinstore                                  # noqa: F401
 from ccxt.cryptocom import cryptocom                                  # noqa: F401
 from ccxt.currencycom import currencycom                              # noqa: F401
 from ccxt.deepwaters import deepwaters                                # noqa: F401
@@ -243,6 +244,7 @@ exchanges = [
     'coinone',
     'coinsph',
     'coinspot',
+    'coinstore',
     'cryptocom',
     'currencycom',
     'deepwaters',

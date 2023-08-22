@@ -65,6 +65,7 @@ var coinmate = require('./src/coinmate.js');
 var coinone = require('./src/coinone.js');
 var coinsph = require('./src/coinsph.js');
 var coinspot = require('./src/coinspot.js');
+var coinstore = require('./src/coinstore.js');
 var cryptocom = require('./src/cryptocom.js');
 var currencycom = require('./src/currencycom.js');
 var deepwaters = require('./src/deepwaters.js');
@@ -242,6 +243,7 @@ const exchanges = {
     'coinone': coinone,
     'coinsph': coinsph,
     'coinspot': coinspot,
+    'coinstore': coinstore,
     'cryptocom': cryptocom,
     'currencycom': currencycom,
     'deepwaters': deepwaters,
@@ -456,6 +458,7 @@ exports.coinmate = coinmate;
 exports.coinone = coinone;
 exports.coinsph = coinsph;
 exports.coinspot = coinspot;
+exports.coinstore = coinstore;
 exports.cryptocom = cryptocom;
 exports.currencycom = currencycom;
 exports.deepwaters = deepwaters;
