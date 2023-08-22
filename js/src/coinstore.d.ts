@@ -7,7 +7,7 @@ export default class coinstore extends Exchange {
     parsePrivateTrade(trade: any, market?: any): import("./base/types.js").Trade;
     parseTrade(trade: any, market?: any): import("./base/types.js").Trade;
     fetchOrderBook(symbol: any, limit?: any, params?: {}): Promise<import("./base/types.js").OrderBook>;
-    fetchTicker(symbol: any, params?: {}): Promise<any>;
+    fetchTicker(symbol: any, params?: {}): Promise<import("./base/types.js").Ticker>;
     fetchTickers(symbols?: any, params?: {}): Promise<any>;
     parseTicker(ticker: any, market?: any): import("./base/types.js").Ticker;
     fetchBalance(params?: {}): Promise<import("./base/types.js").Balances>;

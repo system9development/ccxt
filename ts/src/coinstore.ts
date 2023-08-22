@@ -447,14 +447,15 @@ export default class coinstore extends Exchange {
          * @returns {object} a [ticker structure]{@link https://docs.ccxt.com/#/?id=ticker-structure}
          */
         await this.loadMarkets ();
-        const id = this.marketId (symbol).toUpperCase ();
+        let id = this.marketId (symbol);
+        id = id.toUpperCase ();
         const response = await this.publicGetApiV1MarketTickers (params);
         const tickers = this.filterByArray (this.safeValue (response, 'data'), 'symbol', [ id ], false);
         const ticker = this.safeValue (tickers, 0);
         if (!ticker) {
             throw new BadSymbol (this.id + ' fetchTicker() symbol ' + symbol + ' not found');
         }
-        return this.parseTicker (ticker)
+        return this.parseTicker (ticker);
     }
 
     async fetchTickers (symbols = undefined, params = {}) {
@@ -971,7 +972,8 @@ export default class coinstore extends Exchange {
             headers['X-CS-EXPIRES'] = timestamp.toString ();
             headers['X-CS-APIKEY'] = this.apiKey;
             const expiresKey = Math.floor (timestamp / 30000);
-            const expiresHmac = this.hmac (this.encode (expiresKey.toString ()), this.encode (this.secret), sha256, 'hex');
+            const expiresKeyString = expiresKey.toString ();
+            const expiresHmac = this.hmac (this.encode (expiresKeyString), this.encode (this.secret), sha256, 'hex');
             headers['X-CS-SIGN'] = this.hmac (this.encode (paramString + bodyString), this.encode (expiresHmac), sha256, 'hex');
         }
         if (method === 'POST') {

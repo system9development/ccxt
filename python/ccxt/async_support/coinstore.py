@@ -10,6 +10,7 @@ import json
 from ccxt.base.errors import ExchangeError
 from ccxt.base.errors import PermissionDenied
 from ccxt.base.errors import BadRequest
+from ccxt.base.errors import BadSymbol
 from ccxt.base.errors import InsufficientFunds
 from ccxt.base.errors import DDoSProtection
 from ccxt.base.errors import AuthenticationError
@@ -57,7 +58,7 @@ class coinstore(Exchange):
                 'fetchOrderBook': True,
                 'fetchOrders': True,
                 'fetchPositions': False,
-                'fetchTicker': False,
+                'fetchTicker': True,
                 'fetchTickers': True,
                 'fetchTime': False,
                 'fetchTrades': True,
@@ -431,7 +432,15 @@ class coinstore(Exchange):
         :param dict [params]: extra parameters specific to the coinstore api endpoint
         :returns dict: a `ticker structure <https://docs.ccxt.com/#/?id=ticker-structure>`
         """
-        return self.fetch_tickers([symbol], params)
+        await self.load_markets()
+        id = self.market_id(symbol)
+        id = id.upper()
+        response = await self.publicGetApiV1MarketTickers(params)
+        tickers = self.filter_by_array(self.safe_value(response, 'data'), 'symbol', [id], False)
+        ticker = self.safe_value(tickers, 0)
+        if not ticker:
+            raise BadSymbol(self.id + ' fetchTicker() symbol ' + symbol + ' not found')
+        return self.parse_ticker(ticker)
 
     async def fetch_tickers(self, symbols=None, params={}):
         """
@@ -870,7 +879,7 @@ class coinstore(Exchange):
         :param dict [body]: body to use for the request
         :returns dict: an associative dictionary of currencies
         """
-        url = getattr(self, 'urls')['api']['spot']
+        url = self.urls['api']['spot']
         url = self.implode_hostname(url)
         # v1 api implodes 'symbol' for some endpoints
         path = self.implode_params(path, params)
@@ -892,7 +901,8 @@ class coinstore(Exchange):
             headers['X-CS-EXPIRES'] = str(timestamp)
             headers['X-CS-APIKEY'] = self.apiKey
             expiresKey = int(math.floor(timestamp / 30000))
-            expiresHmac = self.hmac(self.encode str((expiresKey)), self.encode(self.secret), hashlib.sha256, 'hex')
+            expiresKeyString = str(expiresKey)
+            expiresHmac = self.hmac(self.encode(expiresKeyString), self.encode(self.secret), hashlib.sha256, 'hex')
             headers['X-CS-SIGN'] = self.hmac(self.encode(paramString + bodyString), self.encode(expiresHmac), hashlib.sha256, 'hex')
         if method == 'POST':
             return {'url': url, 'method': method, 'body': bodyString, 'headers': headers}

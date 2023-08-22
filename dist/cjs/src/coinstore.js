@@ -48,7 +48,7 @@ class coinstore extends coinstore$1 {
                 'fetchOrderBook': true,
                 'fetchOrders': true,
                 'fetchPositions': false,
-                'fetchTicker': false,
+                'fetchTicker': true,
                 'fetchTickers': true,
                 'fetchTime': false,
                 'fetchTrades': true,
@@ -438,7 +438,16 @@ class coinstore extends coinstore$1 {
          * @param {object} [params] extra parameters specific to the coinstore api endpoint
          * @returns {object} a [ticker structure]{@link https://docs.ccxt.com/#/?id=ticker-structure}
          */
-        return this.fetchTickers([symbol], params);
+        await this.loadMarkets();
+        let id = this.marketId(symbol);
+        id = id.toUpperCase();
+        const response = await this.publicGetApiV1MarketTickers(params);
+        const tickers = this.filterByArray(this.safeValue(response, 'data'), 'symbol', [id], false);
+        const ticker = this.safeValue(tickers, 0);
+        if (!ticker) {
+            throw new errors.BadSymbol(this.id + ' fetchTicker() symbol ' + symbol + ' not found');
+        }
+        return this.parseTicker(ticker);
     }
     async fetchTickers(symbols = undefined, params = {}) {
         /**
@@ -918,7 +927,7 @@ class coinstore extends coinstore$1 {
          * @param {object} [body] body to use for the request
          * @returns {object} an associative dictionary of currencies
          */
-        let url = this['urls']['api']['spot'];
+        let url = this.urls['api']['spot'];
         url = this.implodeHostname(url);
         // v1 api implodes 'symbol' for some endpoints
         path = this.implodeParams(path, params);
@@ -943,7 +952,8 @@ class coinstore extends coinstore$1 {
             headers['X-CS-EXPIRES'] = timestamp.toString();
             headers['X-CS-APIKEY'] = this.apiKey;
             const expiresKey = Math.floor(timestamp / 30000);
-            const expiresHmac = this.hmac(this.encode(expiresKey.toString()), this.encode(this.secret), sha256.sha256, 'hex');
+            const expiresKeyString = expiresKey.toString();
+            const expiresHmac = this.hmac(this.encode(expiresKeyString), this.encode(this.secret), sha256.sha256, 'hex');
             headers['X-CS-SIGN'] = this.hmac(this.encode(paramString + bodyString), this.encode(expiresHmac), sha256.sha256, 'hex');
         }
         if (method === 'POST') {
