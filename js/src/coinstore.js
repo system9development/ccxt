@@ -814,7 +814,7 @@ export default class coinstore extends Exchange {
             'type': this.safeStringLower(order, 'ordType'),
             'timeInForce': 'GTC',
             'postOnly': undefined,
-            'side': this.safeStringLower(order, 'side'),
+            'side': this.safeStringLower('order', 'side'),
             'price': this.safeNumber(order, 'ordPrice'),
             'stopPrice': undefined,
             'triggerPrice': undefined,

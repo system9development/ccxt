@@ -48,7 +48,7 @@ class coinstore extends Exchange {
                 'fetchOrderBook' => true,
                 'fetchOrders' => true,
                 'fetchPositions' => false,
-                'fetchTicker' => false,
+                'fetchTicker' => true,
                 'fetchTickers' => true,
                 'fetchTime' => false,
                 'fetchTrades' => true,
@@ -431,13 +431,22 @@ class coinstore extends Exchange {
 
     public function fetch_ticker($symbol, $params = array ()) {
         /**
-         * fetches a price ticker, a statistical calculation with the information calculated over the past 24 hours for a specific market
-         * @see https://coinstore-openapi.github.io/en/#ticker-related
-         * @param {string} $symbol unified $symbol of the market to fetch the ticker for
+         * fetches a price $ticker, a statistical calculation with the information calculated over the past 24 hours for a specific market
+         * @see https://coinstore-openapi.github.io/en/#$ticker-related
+         * @param {string} $symbol unified $symbol of the market to fetch the $ticker for
          * @param {array} [$params] extra parameters specific to the coinstore api endpoint
-         * @return {array} a ~@link https://docs.ccxt.com/#/?id=ticker-structure ticker structure~
+         * @return {array} a ~@link https://docs.ccxt.com/#/?$id=$ticker-structure $ticker structure~
          */
-        return $this->fetch_tickers(array( $symbol ), $params);
+        $this->load_markets();
+        $id = $this->market_id($symbol);
+        $id = strtoupper($id);
+        $response = $this->publicGetApiV1MarketTickers ($params);
+        $tickers = $this->filter_by_array($this->safe_value($response, 'data'), 'symbol', array( $id ), false);
+        $ticker = $this->safe_value($tickers, 0);
+        if (!$ticker) {
+            throw new BadSymbol($this->id . ' fetchTicker() $symbol ' . $symbol . ' not found');
+        }
+        return $this->parse_ticker($ticker);
     }
 
     public function fetch_tickers($symbols = null, $params = array ()) {
@@ -910,7 +919,7 @@ class coinstore extends Exchange {
          * @param {array} [$body] $body to use for the request
          * @return {array} an associative dictionary of currencies
          */
-        $url = $this->$'urls'['api']['spot'];
+        $url = $this->urls['api']['spot'];
         $url = $this->implode_hostname($url);
         // v1 $api implodes 'symbol' for some endpoints
         $path = $this->implode_params($path, $params);
@@ -934,7 +943,8 @@ class coinstore extends Exchange {
             $headers['X-CS-EXPIRES'] = (string) $timestamp;
             $headers['X-CS-APIKEY'] = $this->apiKey;
             $expiresKey = (int) floor($timestamp / 30000);
-            $expiresHmac = $this->hmac($this->encode(string) ($expiresKey), $this->encode($this->secret), 'sha256', 'hex');
+            $expiresKeyString = (string) $expiresKey;
+            $expiresHmac = $this->hmac($this->encode($expiresKeyString), $this->encode($this->secret), 'sha256', 'hex');
             $headers['X-CS-SIGN'] = $this->hmac($this->encode($paramString . $bodyString), $this->encode($expiresHmac), 'sha256', 'hex');
         }
         if ($method === 'POST') {

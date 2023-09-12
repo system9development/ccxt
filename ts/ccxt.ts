@@ -145,6 +145,7 @@ import okx from  './src/okx.js'
 import osl from  './src/osl.js'
 import paymium from  './src/paymium.js'
 import phemex from  './src/phemex.js'
+import pintu from  './src/pintu.js'
 import poloniex from  './src/poloniex.js'
 import poloniexfutures from  './src/poloniexfutures.js'
 import probit from  './src/probit.js'
@@ -322,6 +323,7 @@ const exchanges = {
     'osl':                    osl,
     'paymium':                paymium,
     'phemex':                 phemex,
+    'pintu':                  pintu,
     'poloniex':               poloniex,
     'poloniexfutures':        poloniexfutures,
     'probit':                 probit,
@@ -570,6 +572,7 @@ export {
     osl,
     paymium,
     phemex,
+    pintu,
     poloniex,
     poloniexfutures,
     probit,

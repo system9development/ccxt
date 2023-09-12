@@ -111,6 +111,7 @@ var okx = require('./src/okx.js');
 var osl = require('./src/osl.js');
 var paymium = require('./src/paymium.js');
 var phemex = require('./src/phemex.js');
+var pintu = require('./src/pintu.js');
 var poloniex = require('./src/poloniex.js');
 var poloniexfutures = require('./src/poloniexfutures.js');
 var probit = require('./src/probit.js');
@@ -289,6 +290,7 @@ const exchanges = {
     'osl': osl,
     'paymium': paymium,
     'phemex': phemex,
+    'pintu': pintu,
     'poloniex': poloniex,
     'poloniexfutures': poloniexfutures,
     'probit': probit,
@@ -504,6 +506,7 @@ exports.okx = okx;
 exports.osl = osl;
 exports.paymium = paymium;
 exports.phemex = phemex;
+exports.pintu = pintu;
 exports.poloniex = poloniex;
 exports.poloniexfutures = poloniexfutures;
 exports.probit = probit;
