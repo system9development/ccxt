@@ -761,19 +761,20 @@ class pintu(Exchange):
        :param dict [body]: body to use for the request
        :returns dict: an associative dictionary of currencies
        """
-        urls = self.safe_value(self, 'urls')
+        urls = self.urls
         apiUrls = self.safe_value(urls, 'api')
         url = self.safe_string(apiUrls, 'spot', '')
         url = self.implode_hostname(url)
         url += '/' + path
         params = self.keysort(params)
+        headers = {}
         headers['Accept'] = 'application/json'
-        headers['Host'] = 'api.uat.pintupro.com'
+        headers['Host'] = 'api.' + self.hostname
         if api == 'public':
             paramString = self.urlencode(params)
             if len(paramString):
                 paramString = '?' + paramString
-            return {'url': url + paramString, 'method': method, 'headers': headers}
+            return {'url': url + paramString, 'method': method, 'headers': headers, 'body': {}}
         headers['Content-Type'] = 'application/json'
         self.check_required_credentials()
         paramString = ''
