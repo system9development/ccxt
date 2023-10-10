@@ -810,20 +810,22 @@ export default class pintu extends Exchange {
         * @param {object} [body] body to use for the request
         * @returns {object} an associative dictionary of currencies
         */
-        const urls = this.safeValue (this, 'urls');
+        // Can't use safeValue below, it breaks python transpilation
+        const urls = this.urls;
         const apiUrls = this.safeValue (urls, 'api');
         let url = this.safeString (apiUrls, 'spot', '');
         url = this.implodeHostname (url);
         url += '/' + path;
         params = this.keysort (params);
+        headers = {};
         headers['Accept'] = 'application/json';
-        headers['Host'] = 'api.uat.pintupro.com';
+        headers['Host'] = 'api.' + this.hostname;
         if (api === 'public') {
             let paramString = this.urlencode (params);
             if (paramString.length) {
                 paramString = '?' + paramString;
             }
-            return { 'url': url + paramString, 'method': method, 'headers': headers };
+            return { 'url': url + paramString, 'method': method, 'headers': headers, 'body': {} };
         }
         headers['Content-Type'] = 'application/json';
         this.checkRequiredCredentials ();
