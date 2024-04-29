@@ -109,7 +109,6 @@ from ccxt.async_support.coinspot import coinspot                                
 from ccxt.async_support.coinstore import coinstore                              # noqa: F401
 from ccxt.async_support.cryptocom import cryptocom                              # noqa: F401
 from ccxt.async_support.currencycom import currencycom                          # noqa: F401
-from ccxt.async_support.deepwaters import deepwaters                            # noqa: F401
 from ccxt.async_support.delta import delta                                      # noqa: F401
 from ccxt.async_support.deribit import deribit                                  # noqa: F401
 from ccxt.async_support.digifinex import digifinex                              # noqa: F401
@@ -228,7 +227,6 @@ exchanges = [
     'coinstore',
     'cryptocom',
     'currencycom',
-    'deepwaters',
     'delta',
     'deribit',
     'digifinex',
