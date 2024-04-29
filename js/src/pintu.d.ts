@@ -19,7 +19,7 @@ export default class pintu extends Exchange {
         url: string;
         method: string;
         headers: {};
-        body?: undefined;
+        body: {};
     } | {
         url: string;
         method: string;

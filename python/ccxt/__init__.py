@@ -129,6 +129,7 @@ from ccxt.coinspot import coinspot                                    # noqa: F4
 from ccxt.coinstore import coinstore                                  # noqa: F401
 from ccxt.cryptocom import cryptocom                                  # noqa: F401
 from ccxt.currencycom import currencycom                              # noqa: F401
+from ccxt.deepwaters import deepwaters                                # noqa: F401
 from ccxt.delta import delta                                          # noqa: F401
 from ccxt.deribit import deribit                                      # noqa: F401
 from ccxt.digifinex import digifinex                                  # noqa: F401
@@ -168,6 +169,7 @@ from ccxt.okcoin import okcoin                                        # noqa: F4
 from ccxt.okex import okex                                            # noqa: F401
 from ccxt.okex5 import okex5                                          # noqa: F401
 from ccxt.okx import okx                                              # noqa: F401
+from ccxt.osl import osl                                              # noqa: F401
 from ccxt.paymium import paymium                                      # noqa: F401
 from ccxt.phemex import phemex                                        # noqa: F401
 from ccxt.pintu import pintu                                          # noqa: F401
@@ -246,6 +248,7 @@ exchanges = [
     'coinstore',
     'cryptocom',
     'currencycom',
+    'deepwaters',
     'delta',
     'deribit',
     'digifinex',
@@ -285,6 +288,7 @@ exchanges = [
     'okex',
     'okex5',
     'okx',
+    'osl',
     'paymium',
     'phemex',
     'pintu',
