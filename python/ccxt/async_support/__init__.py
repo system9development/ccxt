@@ -148,6 +148,7 @@ from ccxt.async_support.okcoin import okcoin                                    
 from ccxt.async_support.okex import okex                                        # noqa: F401
 from ccxt.async_support.okex5 import okex5                                      # noqa: F401
 from ccxt.async_support.okx import okx                                          # noqa: F401
+from ccxt.async_support.osl import osl                                          # noqa: F401
 from ccxt.async_support.paymium import paymium                                  # noqa: F401
 from ccxt.async_support.phemex import phemex                                    # noqa: F401
 from ccxt.async_support.pintu import pintu                                      # noqa: F401
@@ -265,6 +266,7 @@ exchanges = [
     'okex',
     'okex5',
     'okx',
+    'osl',
     'paymium',
     'phemex',
     'pintu',
