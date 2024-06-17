@@ -10,11 +10,11 @@ import { Int, OrderSide } from './base/types.js';
 //  ---------------------------------------------------------------------------
 
 export default class coincheck extends Exchange {
-    describe () {
-        return this.deepExtend (super.describe (), {
+    describe() {
+        return this.deepExtend(super.describe(), {
             'id': 'coincheck',
             'name': 'coincheck',
-            'countries': [ 'JP', 'ID' ],
+            'countries': ['JP', 'ID'],
             'rateLimit': 1500,
             'has': {
                 'CORS': undefined,
@@ -117,7 +117,15 @@ export default class coincheck extends Exchange {
                 },
             },
             'markets': {
-                'BTC/JPY': { 'id': 'btc_jpy', 'symbol': 'BTC/JPY', 'base': 'BTC', 'quote': 'JPY', 'baseId': 'btc', 'quoteId': 'jpy', 'type': 'spot', 'spot': true }, // the only real pair
+                'BTC/JPY': {
+                    'id': 'btc_jpy', 'symbol': 'BTC/JPY', 'base': 'BTC', 'quote': 'JPY', 'baseId': 'btc', 'quoteId': 'jpy', 'type': 'spot', 'spot': true,
+                    'precision': {
+                        'amount': 0.001,
+                        'price': 1.0,
+                        'base': 0.001,
+                        'quote': 1.0
+                    }
+                }, // the only real pair
                 // 'ETH/JPY': { 'id': 'eth_jpy', 'symbol': 'ETH/JPY', 'base': 'ETH', 'quote': 'JPY', 'baseId': 'eth', 'quoteId': 'jpy' },
                 'ETC/JPY': { 'id': 'etc_jpy', 'symbol': 'ETC/JPY', 'base': 'ETC', 'quote': 'JPY', 'baseId': 'etc', 'quoteId': 'jpy', 'type': 'spot', 'spot': true },
                 // 'DAO/JPY': { 'id': 'dao_jpy', 'symbol': 'DAO/JPY', 'base': 'DAO', 'quote': 'JPY', 'baseId': 'dao', 'quoteId': 'jpy' },
@@ -147,8 +155,8 @@ export default class coincheck extends Exchange {
                 'trading': {
                     'tierBased': false,
                     'percentage': true,
-                    'maker': this.parseNumber ('0'),
-                    'taker': this.parseNumber ('0'),
+                    'maker': this.parseNumber('0'),
+                    'taker': this.parseNumber('0'),
                 },
             },
             'precisionMode': TICK_SIZE,
@@ -162,25 +170,25 @@ export default class coincheck extends Exchange {
         });
     }
 
-    parseBalance (response) {
+    parseBalance(response) {
         const result = { 'info': response };
-        const codes = Object.keys (this.currencies);
+        const codes = Object.keys(this.currencies);
         for (let i = 0; i < codes.length; i++) {
             const code = codes[i];
-            const currency = this.currency (code);
+            const currency = this.currency(code);
             const currencyId = currency['id'];
             if (currencyId in response) {
-                const account = this.account ();
+                const account = this.account();
                 const reserved = currencyId + '_reserved';
-                account['free'] = this.safeString (response, currencyId);
-                account['used'] = this.safeString (response, reserved);
+                account['free'] = this.safeString(response, currencyId);
+                account['used'] = this.safeString(response, reserved);
                 result[code] = account;
             }
         }
-        return this.safeBalance (result);
+        return this.safeBalance(result);
     }
 
-    async fetchBalance (params = {}) {
+    async fetchBalance(params = {}) {
         /**
          * @method
          * @name coincheck#fetchBalance
@@ -188,12 +196,12 @@ export default class coincheck extends Exchange {
          * @param {object} params extra parameters specific to the coincheck api endpoint
          * @returns {object} a [balance structure]{@link https://docs.ccxt.com/en/latest/manual.html?#balance-structure}
          */
-        await this.loadMarkets ();
-        const response = await this.privateGetAccountsBalance (params);
-        return this.parseBalance (response);
+        await this.loadMarkets();
+        const response = await this.privateGetAccountsBalance(params);
+        return this.parseBalance(response);
     }
 
-    async fetchOpenOrders (symbol: string = undefined, since: Int = undefined, limit: Int = undefined, params = {}) {
+    async fetchOpenOrders(symbol: string = undefined, since: Int = undefined, limit: Int = undefined, params = {}) {
         /**
          * @method
          * @name coincheck#fetchOpenOrders
@@ -204,23 +212,23 @@ export default class coincheck extends Exchange {
          * @param {object} params extra parameters specific to the coincheck api endpoint
          * @returns {[object]} a list of [order structures]{@link https://docs.ccxt.com/#/?id=order-structure}
          */
-        await this.loadMarkets ();
+        await this.loadMarkets();
         // Only BTC/JPY is meaningful
         let market = undefined;
         if (symbol !== undefined) {
-            market = this.market (symbol);
+            market = this.market(symbol);
         }
-        const response = await this.privateGetExchangeOrdersOpens (params);
-        const rawOrders = this.safeValue (response, 'orders', []);
-        const parsedOrders = this.parseOrders (rawOrders, market, since, limit);
+        const response = await this.privateGetExchangeOrdersOpens(params);
+        const rawOrders = this.safeValue(response, 'orders', []);
+        const parsedOrders = this.parseOrders(rawOrders, market, since, limit);
         const result = [];
         for (let i = 0; i < parsedOrders.length; i++) {
-            result.push (this.extend (parsedOrders[i], { 'status': 'open' }));
+            result.push(this.extend(parsedOrders[i], { 'status': 'open' }));
         }
         return result;
     }
 
-    parseOrder (order, market = undefined) {
+    parseOrder(order, market = undefined) {
         //
         // fetchOpenOrders
         //
@@ -235,20 +243,20 @@ export default class coincheck extends Exchange {
         //
         // todo: add formats for fetchOrder, fetchClosedOrders here
         //
-        const id = this.safeString (order, 'id');
-        const side = this.safeString (order, 'order_type');
-        const timestamp = this.parse8601 (this.safeString (order, 'created_at'));
-        const amount = this.safeString (order, 'pending_amount');
-        const remaining = this.safeString (order, 'pending_amount');
-        const price = this.safeString (order, 'rate');
+        const id = this.safeString(order, 'id');
+        const side = this.safeString(order, 'order_type');
+        const timestamp = this.parse8601(this.safeString(order, 'created_at'));
+        const amount = this.safeString(order, 'pending_amount');
+        const remaining = this.safeString(order, 'pending_amount');
+        const price = this.safeString(order, 'rate');
         const status = undefined;
-        const marketId = this.safeString (order, 'pair');
-        const symbol = this.safeSymbol (marketId, market, '_');
-        return this.safeOrder ({
+        const marketId = this.safeString(order, 'pair');
+        const symbol = this.safeSymbol(marketId, market, '_');
+        return this.safeOrder({
             'id': id,
             'clientOrderId': undefined,
             'timestamp': timestamp,
-            'datetime': this.iso8601 (timestamp),
+            'datetime': this.iso8601(timestamp),
             'lastTradeTimestamp': undefined,
             'amount': amount,
             'remaining': remaining,
@@ -270,7 +278,7 @@ export default class coincheck extends Exchange {
         }, market);
     }
 
-    async fetchOrderBook (symbol: string, limit: Int = undefined, params = {}) {
+    async fetchOrderBook(symbol: string, limit: Int = undefined, params = {}) {
         /**
          * @method
          * @name coincheck#fetchOrderBook
@@ -280,16 +288,16 @@ export default class coincheck extends Exchange {
          * @param {object} params extra parameters specific to the coincheck api endpoint
          * @returns {object} A dictionary of [order book structures]{@link https://docs.ccxt.com/#/?id=order-book-structure} indexed by market symbols
          */
-        await this.loadMarkets ();
-        const market = this.market (symbol);
+        await this.loadMarkets();
+        const market = this.market(symbol);
         const request = {
             'pair': market['id'],
         };
-        const response = await this.publicGetOrderBooks (this.extend (request, params));
-        return this.parseOrderBook (response, market['symbol']);
+        const response = await this.publicGetOrderBooks(this.extend(request, params));
+        return this.parseOrderBook(response, market['symbol']);
     }
 
-    parseTicker (ticker, market = undefined) {
+    parseTicker(ticker, market = undefined) {
         //
         // {
         //     "last":4192632.0,
@@ -301,18 +309,18 @@ export default class coincheck extends Exchange {
         //     "timestamp":1643374115
         // }
         //
-        const symbol = this.safeSymbol (undefined, market);
-        const timestamp = this.safeTimestamp (ticker, 'timestamp');
-        const last = this.safeString (ticker, 'last');
-        return this.safeTicker ({
+        const symbol = this.safeSymbol(undefined, market);
+        const timestamp = this.safeTimestamp(ticker, 'timestamp');
+        const last = this.safeString(ticker, 'last');
+        return this.safeTicker({
             'symbol': symbol,
             'timestamp': timestamp,
-            'datetime': this.iso8601 (timestamp),
-            'high': this.safeString (ticker, 'high'),
-            'low': this.safeString (ticker, 'low'),
-            'bid': this.safeString (ticker, 'bid'),
+            'datetime': this.iso8601(timestamp),
+            'high': this.safeString(ticker, 'high'),
+            'low': this.safeString(ticker, 'low'),
+            'bid': this.safeString(ticker, 'bid'),
             'bidVolume': undefined,
-            'ask': this.safeString (ticker, 'ask'),
+            'ask': this.safeString(ticker, 'ask'),
             'askVolume': undefined,
             'vwap': undefined,
             'open': undefined,
@@ -322,13 +330,13 @@ export default class coincheck extends Exchange {
             'change': undefined,
             'percentage': undefined,
             'average': undefined,
-            'baseVolume': this.safeString (ticker, 'volume'),
+            'baseVolume': this.safeString(ticker, 'volume'),
             'quoteVolume': undefined,
             'info': ticker,
         }, market);
     }
 
-    async fetchTicker (symbol: string, params = {}) {
+    async fetchTicker(symbol: string, params = {}) {
         /**
          * @method
          * @name coincheck#fetchTicker
@@ -338,14 +346,14 @@ export default class coincheck extends Exchange {
          * @returns {object} a [ticker structure]{@link https://docs.ccxt.com/#/?id=ticker-structure}
          */
         if (symbol !== 'BTC/JPY') {
-            throw new BadSymbol (this.id + ' fetchTicker() supports BTC/JPY only');
+            throw new BadSymbol(this.id + ' fetchTicker() supports BTC/JPY only');
         }
-        await this.loadMarkets ();
-        const market = this.market (symbol);
+        await this.loadMarkets();
+        const market = this.market(symbol);
         const request = {
             'pair': market['id'],
         };
-        const ticker = await this.publicGetTicker (this.extend (request, params));
+        const ticker = await this.publicGetTicker(this.extend(request, params));
         //
         // {
         //     "last":4192632.0,
@@ -357,10 +365,10 @@ export default class coincheck extends Exchange {
         //     "timestamp":1643374115
         // }
         //
-        return this.parseTicker (ticker, market);
+        return this.parseTicker(ticker, market);
     }
 
-    parseTrade (trade, market = undefined) {
+    parseTrade(trade, market = undefined) {
         //
         // fetchTrades (public)
         //
@@ -391,11 +399,11 @@ export default class coincheck extends Exchange {
         //           "side": "buy"
         //      }
         //
-        const timestamp = this.parse8601 (this.safeString (trade, 'created_at'));
-        const id = this.safeString (trade, 'id');
-        const priceString = this.safeString (trade, 'rate');
-        const marketId = this.safeString (trade, 'pair');
-        market = this.safeMarket (marketId, market, '_');
+        const timestamp = this.parse8601(this.safeString(trade, 'created_at'));
+        const id = this.safeString(trade, 'id');
+        const priceString = this.safeString(trade, 'rate');
+        const marketId = this.safeString(trade, 'pair');
+        market = this.safeMarket(marketId, market, '_');
         const baseId = market['baseId'];
         const quoteId = market['quoteId'];
         const symbol = market['symbol'];
@@ -406,28 +414,28 @@ export default class coincheck extends Exchange {
         let fee = undefined;
         let orderId = undefined;
         if ('liquidity' in trade) {
-            if (this.safeString (trade, 'liquidity') === 'T') {
+            if (this.safeString(trade, 'liquidity') === 'T') {
                 takerOrMaker = 'taker';
-            } else if (this.safeString (trade, 'liquidity') === 'M') {
+            } else if (this.safeString(trade, 'liquidity') === 'M') {
                 takerOrMaker = 'maker';
             }
-            const funds = this.safeValue (trade, 'funds', {});
-            amountString = this.safeString (funds, baseId);
-            costString = this.safeString (funds, quoteId);
+            const funds = this.safeValue(trade, 'funds', {});
+            amountString = this.safeString(funds, baseId);
+            costString = this.safeString(funds, quoteId);
             fee = {
-                'currency': this.safeString (trade, 'fee_currency'),
-                'cost': this.safeString (trade, 'fee'),
+                'currency': this.safeString(trade, 'fee_currency'),
+                'cost': this.safeString(trade, 'fee'),
             };
-            side = this.safeString (trade, 'side');
-            orderId = this.safeString (trade, 'order_id');
+            side = this.safeString(trade, 'side');
+            orderId = this.safeString(trade, 'order_id');
         } else {
-            amountString = this.safeString (trade, 'amount');
-            side = this.safeString (trade, 'order_type');
+            amountString = this.safeString(trade, 'amount');
+            side = this.safeString(trade, 'order_type');
         }
-        return this.safeTrade ({
+        return this.safeTrade({
             'id': id,
             'info': trade,
-            'datetime': this.iso8601 (timestamp),
+            'datetime': this.iso8601(timestamp),
             'timestamp': timestamp,
             'symbol': symbol,
             'type': undefined,
@@ -441,7 +449,7 @@ export default class coincheck extends Exchange {
         }, market);
     }
 
-    async fetchMyTrades (symbol: string = undefined, since: Int = undefined, limit: Int = undefined, params = {}) {
+    async fetchMyTrades(symbol: string = undefined, since: Int = undefined, limit: Int = undefined, params = {}) {
         /**
          * @method
          * @name coincheck#fetchMyTrades
@@ -452,13 +460,13 @@ export default class coincheck extends Exchange {
          * @param {object} params extra parameters specific to the coincheck api endpoint
          * @returns {[object]} a list of [trade structures]{@link https://docs.ccxt.com/#/?id=trade-structure}
          */
-        await this.loadMarkets ();
-        const market = this.market (symbol);
+        await this.loadMarkets();
+        const market = this.market(symbol);
         const request = {};
         if (limit !== undefined) {
             request['limit'] = limit;
         }
-        const response = await this.privateGetExchangeOrdersTransactionsPagination (this.extend (request, params));
+        const response = await this.privateGetExchangeOrdersTransactionsPagination(this.extend(request, params));
         //
         //      {
         //          "success": true,
@@ -481,11 +489,11 @@ export default class coincheck extends Exchange {
         //                  ]
         //      }
         //
-        const transactions = this.safeValue (response, 'data', []);
-        return this.parseTrades (transactions, market, since, limit);
+        const transactions = this.safeValue(response, 'data', []);
+        return this.parseTrades(transactions, market, since, limit);
     }
 
-    async fetchTrades (symbol: string, since: Int = undefined, limit: Int = undefined, params = {}) {
+    async fetchTrades(symbol: string, since: Int = undefined, limit: Int = undefined, params = {}) {
         /**
          * @method
          * @name coincheck#fetchTrades
@@ -496,15 +504,15 @@ export default class coincheck extends Exchange {
          * @param {object} params extra parameters specific to the coincheck api endpoint
          * @returns {[object]} a list of [trade structures]{@link https://docs.ccxt.com/en/latest/manual.html?#public-trades}
          */
-        await this.loadMarkets ();
-        const market = this.market (symbol);
+        await this.loadMarkets();
+        const market = this.market(symbol);
         const request = {
             'pair': market['id'],
         };
         if (limit !== undefined) {
             request['limit'] = limit;
         }
-        const response = await this.publicGetTrades (this.extend (request, params));
+        const response = await this.publicGetTrades(this.extend(request, params));
         //
         //      {
         //          "id": "206849494",
@@ -515,11 +523,11 @@ export default class coincheck extends Exchange {
         //          "created_at": "2021-12-08T14:10:33.000Z"
         //      }
         //
-        const data = this.safeValue (response, 'data', []);
-        return this.parseTrades (data, market, since, limit);
+        const data = this.safeValue(response, 'data', []);
+        return this.parseTrades(data, market, since, limit);
     }
 
-    async fetchTradingFees (params = {}) {
+    async fetchTradingFees(params = {}) {
         /**
          * @method
          * @name coincheck#fetchTradingFees
@@ -527,8 +535,8 @@ export default class coincheck extends Exchange {
          * @param {object} params extra parameters specific to the coincheck api endpoint
          * @returns {object} a dictionary of [fee structures]{@link https://docs.ccxt.com/#/?id=fee-structure} indexed by market symbols
          */
-        await this.loadMarkets ();
-        const response = await this.privateGetAccounts (params);
+        await this.loadMarkets();
+        const response = await this.privateGetAccounts(params);
         //
         //     {
         //         success: true,
@@ -548,17 +556,17 @@ export default class coincheck extends Exchange {
         //         }
         //     }
         //
-        const fees = this.safeValue (response, 'exchange_fees', {});
+        const fees = this.safeValue(response, 'exchange_fees', {});
         const result = {};
         for (let i = 0; i < this.symbols.length; i++) {
             const symbol = this.symbols[i];
-            const market = this.market (symbol);
-            const fee = this.safeValue (fees, market['id'], {});
+            const market = this.market(symbol);
+            const fee = this.safeValue(fees, market['id'], {});
             result[symbol] = {
                 'info': fee,
                 'symbol': symbol,
-                'maker': this.safeNumber (fee, 'maker_fee'),
-                'taker': this.safeNumber (fee, 'taker_fee'),
+                'maker': this.safeNumber(fee, 'maker_fee'),
+                'taker': this.safeNumber(fee, 'taker_fee'),
                 'percentage': true,
                 'tierBased': false,
             };
@@ -566,7 +574,7 @@ export default class coincheck extends Exchange {
         return result;
     }
 
-    async createOrder (symbol: string, type, side: OrderSide, amount, price = undefined, params = {}) {
+    async createOrder(symbol: string, type, side: OrderSide, amount, price = undefined, params = {}) {
         /**
          * @method
          * @name coincheck#createOrder
@@ -579,8 +587,8 @@ export default class coincheck extends Exchange {
          * @param {object} params extra parameters specific to the coincheck api endpoint
          * @returns {object} an [order structure]{@link https://docs.ccxt.com/#/?id=order-structure}
          */
-        await this.loadMarkets ();
-        const market = this.market (symbol);
+        await this.loadMarkets();
+        const market = this.market(symbol);
         const request = {
             'pair': market['id'],
         };
@@ -594,15 +602,15 @@ export default class coincheck extends Exchange {
             request['rate'] = price;
             request['amount'] = amount;
         }
-        const response = await this.privatePostExchangeOrders (this.extend (request, params));
-        const id = this.safeString (response, 'id');
-        return this.safeOrder ({
+        const response = await this.privatePostExchangeOrders(this.extend(request, params));
+        const id = this.safeString(response, 'id');
+        return this.safeOrder({
             'id': id,
             'info': response,
         }, market);
     }
 
-    async cancelOrder (id: string, symbol: string = undefined, params = {}) {
+    async cancelOrder(id: string, symbol: string = undefined, params = {}) {
         /**
          * @method
          * @name coincheck#cancelOrder
@@ -615,10 +623,10 @@ export default class coincheck extends Exchange {
         const request = {
             'id': id,
         };
-        return await this.privateDeleteExchangeOrdersId (this.extend (request, params));
+        return await this.privateDeleteExchangeOrdersId(this.extend(request, params));
     }
 
-    async fetchDeposits (code: string = undefined, since: Int = undefined, limit: Int = undefined, params = {}) {
+    async fetchDeposits(code: string = undefined, since: Int = undefined, limit: Int = undefined, params = {}) {
         /**
          * @method
          * @name coincheck#fetchDeposits
@@ -629,17 +637,17 @@ export default class coincheck extends Exchange {
          * @param {object} params extra parameters specific to the coincheck api endpoint
          * @returns {[object]} a list of [transaction structures]{@link https://docs.ccxt.com/#/?id=transaction-structure}
          */
-        await this.loadMarkets ();
+        await this.loadMarkets();
         let currency = undefined;
         const request = {};
         if (code !== undefined) {
-            currency = this.currency (code);
+            currency = this.currency(code);
             request['currency'] = currency['id'];
         }
         if (limit !== undefined) {
             request['limit'] = limit;
         }
-        const response = await this.privateGetDepositMoney (this.extend (request, params));
+        const response = await this.privateGetDepositMoney(this.extend(request, params));
         // {
         //   "success": true,
         //   "deposits": [
@@ -663,11 +671,11 @@ export default class coincheck extends Exchange {
         //     }
         //   ]
         // }
-        const data = this.safeValue (response, 'deposits', []);
-        return this.parseTransactions (data, currency, since, limit, { 'type': 'deposit' });
+        const data = this.safeValue(response, 'deposits', []);
+        return this.parseTransactions(data, currency, since, limit, { 'type': 'deposit' });
     }
 
-    async fetchWithdrawals (code: string = undefined, since: Int = undefined, limit: Int = undefined, params = {}) {
+    async fetchWithdrawals(code: string = undefined, since: Int = undefined, limit: Int = undefined, params = {}) {
         /**
          * @method
          * @name coincheck#fetchWithdrawals
@@ -678,16 +686,16 @@ export default class coincheck extends Exchange {
          * @param {object} params extra parameters specific to the coincheck api endpoint
          * @returns {[object]} a list of [transaction structures]{@link https://docs.ccxt.com/#/?id=transaction-structure}
          */
-        await this.loadMarkets ();
+        await this.loadMarkets();
         let currency = undefined;
         if (code !== undefined) {
-            currency = this.currency (code);
+            currency = this.currency(code);
         }
         const request = {};
         if (limit !== undefined) {
             request['limit'] = limit;
         }
-        const response = await this.privateGetWithdraws (this.extend (request, params));
+        const response = await this.privateGetWithdraws(this.extend(request, params));
         //  {
         //   "success": true,
         //   "pagination": {
@@ -709,11 +717,11 @@ export default class coincheck extends Exchange {
         //     }
         //   ]
         // }
-        const data = this.safeValue (response, 'data', []);
-        return this.parseTransactions (data, currency, since, limit, { 'type': 'withdrawal' });
+        const data = this.safeValue(response, 'data', []);
+        return this.parseTransactions(data, currency, since, limit, { 'type': 'withdrawal' });
     }
 
-    parseTransactionStatus (status) {
+    parseTransactionStatus(status) {
         const statuses = {
             // withdrawals
             'pending': 'pending',
@@ -724,10 +732,10 @@ export default class coincheck extends Exchange {
             'confirmed': 'pending',
             'received': 'ok',
         };
-        return this.safeString (statuses, status, status);
+        return this.safeString(statuses, status, status);
     }
 
-    parseTransaction (transaction, currency = undefined) {
+    parseTransaction(transaction, currency = undefined) {
         //
         // fetchDeposits
         //
@@ -754,16 +762,16 @@ export default class coincheck extends Exchange {
         //       "is_fast": true
         //  }
         //
-        const id = this.safeString (transaction, 'id');
-        const timestamp = this.parse8601 (this.safeString (transaction, 'created_at'));
-        const address = this.safeString (transaction, 'address');
-        const amount = this.safeNumber (transaction, 'amount');
-        const currencyId = this.safeString (transaction, 'currency');
-        const code = this.safeCurrencyCode (currencyId, currency);
-        const status = this.parseTransactionStatus (this.safeString (transaction, 'status'));
-        const updated = this.parse8601 (this.safeString (transaction, 'confirmed_at'));
+        const id = this.safeString(transaction, 'id');
+        const timestamp = this.parse8601(this.safeString(transaction, 'created_at'));
+        const address = this.safeString(transaction, 'address');
+        const amount = this.safeNumber(transaction, 'amount');
+        const currencyId = this.safeString(transaction, 'currency');
+        const code = this.safeCurrencyCode(currencyId, currency);
+        const status = this.parseTransactionStatus(this.safeString(transaction, 'status'));
+        const updated = this.parse8601(this.safeString(transaction, 'confirmed_at'));
         let fee = undefined;
-        const feeCost = this.safeNumber (transaction, 'fee');
+        const feeCost = this.safeNumber(transaction, 'fee');
         if (feeCost !== undefined) {
             fee = {
                 'cost': feeCost,
@@ -775,7 +783,7 @@ export default class coincheck extends Exchange {
             'id': id,
             'txid': undefined,
             'timestamp': timestamp,
-            'datetime': this.iso8601 (timestamp),
+            'datetime': this.iso8601(timestamp),
             'network': undefined,
             'address': address,
             'addressTo': address,
@@ -793,28 +801,28 @@ export default class coincheck extends Exchange {
         };
     }
 
-    nonce () {
-        return this.milliseconds ();
+    nonce() {
+        return this.milliseconds();
     }
 
-    sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
-        let url = this.urls['api']['rest'] + '/' + this.implodeParams (path, params);
-        const query = this.omit (params, this.extractParams (path));
+    sign(path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
+        let url = this.urls['api']['rest'] + '/' + this.implodeParams(path, params);
+        const query = this.omit(params, this.extractParams(path));
         if (api === 'public') {
-            if (Object.keys (query).length) {
-                url += '?' + this.urlencode (query);
+            if (Object.keys(query).length) {
+                url += '?' + this.urlencode(query);
             }
         } else {
-            this.checkRequiredCredentials ();
-            const nonce = this.nonce ().toString ();
+            this.checkRequiredCredentials();
+            const nonce = this.nonce().toString();
             let queryString = '';
             if (method === 'GET') {
-                if (Object.keys (query).length) {
-                    url += '?' + this.urlencode (this.keysort (query));
+                if (Object.keys(query).length) {
+                    url += '?' + this.urlencode(this.keysort(query));
                 }
             } else {
-                if (Object.keys (query).length) {
-                    body = this.urlencode (this.keysort (query));
+                if (Object.keys(query).length) {
+                    body = this.urlencode(this.keysort(query));
                     queryString = body;
                 }
             }
@@ -823,13 +831,13 @@ export default class coincheck extends Exchange {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'ACCESS-KEY': this.apiKey,
                 'ACCESS-NONCE': nonce,
-                'ACCESS-SIGNATURE': this.hmac (this.encode (auth), this.encode (this.secret), sha256),
+                'ACCESS-SIGNATURE': this.hmac(this.encode(auth), this.encode(this.secret), sha256),
             };
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }
 
-    handleErrors (httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody) {
+    handleErrors(httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody) {
         if (response === undefined) {
             return;
         }
@@ -837,13 +845,13 @@ export default class coincheck extends Exchange {
         //     {"success":false,"error":"disabled API Key"}'
         //     {"success":false,"error":"invalid authentication"}
         //
-        const success = this.safeValue (response, 'success', true);
+        const success = this.safeValue(response, 'success', true);
         if (!success) {
-            const error = this.safeString (response, 'error');
-            const feedback = this.id + ' ' + this.json (response);
-            this.throwExactlyMatchedException (this.exceptions['exact'], error, feedback);
-            this.throwBroadlyMatchedException (this.exceptions['broad'], body, feedback);
-            throw new ExchangeError (this.id + ' ' + this.json (response));
+            const error = this.safeString(response, 'error');
+            const feedback = this.id + ' ' + this.json(response);
+            this.throwExactlyMatchedException(this.exceptions['exact'], error, feedback);
+            this.throwBroadlyMatchedException(this.exceptions['broad'], body, feedback);
+            throw new ExchangeError(this.id + ' ' + this.json(response));
         }
     }
 }
