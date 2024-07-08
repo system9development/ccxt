@@ -6,7 +6,7 @@ import { ExchangeError, ArgumentsRequired, AuthenticationError, InvalidOrder, In
 import { Precise } from './base/Precise.js';
 import { TICK_SIZE } from './base/functions/number.js';
 import { sha384 } from './static_dependencies/noble-hashes/sha512.js';
-import type { Balances, Currencies, Currency, Dict, Int, Market, Num, OHLCV, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TradingFees, Transaction } from './base/types.js';
+import type { Balances, Currencies, Currency, Dict, Int, Market, Num, OHLCV, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TradingFees, Transaction, int } from './base/types.js';
 
 //  ---------------------------------------------------------------------------
 
@@ -318,7 +318,7 @@ export default class bitopro extends Exchange {
         return this.parseMarkets (markets);
     }
 
-    parseMarket (market): Market {
+    parseMarket (market: Dict): Market {
         const active = !this.safeValue (market, 'maintain');
         const id = this.safeString (market, 'pair');
         const uppercaseId = id.toUpperCase ();
@@ -526,7 +526,7 @@ export default class bitopro extends Exchange {
         return this.parseOrderBook (response, market['symbol'], undefined, 'bids', 'asks', 'price', 'amount');
     }
 
-    parseTrade (trade, market: Market = undefined): Trade {
+    parseTrade (trade: Dict, market: Market = undefined): Trade {
         //
         // fetchTrades
         //         {
@@ -915,7 +915,7 @@ export default class bitopro extends Exchange {
         return this.safeString (statuses, status, undefined);
     }
 
-    parseOrder (order, market: Market = undefined): Order {
+    parseOrder (order: Dict, market: Market = undefined): Order {
         //
         // createOrder
         //         {
@@ -1015,7 +1015,7 @@ export default class bitopro extends Exchange {
          * @param {string} type 'market' or 'limit'
          * @param {string} side 'buy' or 'sell'
          * @param {float} amount how much of currency you want to trade in units of base currency
-         * @param {float} [price] the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+         * @param {float} [price] the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
          * @param {object} [params] extra parameters specific to the exchange API endpoint
          * @returns {object} an [order structure]{@link https://docs.ccxt.com/#/?id=order-structure}
          */
@@ -1099,6 +1099,23 @@ export default class bitopro extends Exchange {
         return this.parseOrder (response, market);
     }
 
+    parseCancelOrders (data) {
+        const dataKeys = Object.keys (data);
+        const orders = [];
+        for (let i = 0; i < dataKeys.length; i++) {
+            const marketId = dataKeys[i];
+            const orderIds = data[marketId];
+            for (let j = 0; j < orderIds.length; j++) {
+                orders.push (this.safeOrder ({
+                    'info': orderIds[j],
+                    'id': orderIds[j],
+                    'symbol': this.safeSymbol (marketId),
+                }));
+            }
+        }
+        return orders;
+    }
+
     async cancelOrders (ids, symbol: Str = undefined, params = {}) {
         /**
          * @method
@@ -1129,7 +1146,8 @@ export default class bitopro extends Exchange {
         //         }
         //     }
         //
-        return response;
+        const data = this.safeDict (response, 'data');
+        return this.parseCancelOrders (data);
     }
 
     async cancelAllOrders (symbol: Str = undefined, params = {}) {
@@ -1154,7 +1172,7 @@ export default class bitopro extends Exchange {
         } else {
             response = await this.privateDeleteOrdersAll (this.extend (request, params));
         }
-        const result = this.safeValue (response, 'data', {});
+        const data = this.safeValue (response, 'data', {});
         //
         //     {
         //         "data":{
@@ -1165,7 +1183,7 @@ export default class bitopro extends Exchange {
         //         }
         //     }
         //
-        return result;
+        return this.parseCancelOrders (data);
     }
 
     async fetchOrder (id: string, symbol: Str = undefined, params = {}) {
@@ -1347,7 +1365,7 @@ export default class bitopro extends Exchange {
         return this.parseTrades (trades, market, since, limit);
     }
 
-    parseTransactionStatus (status) {
+    parseTransactionStatus (status: Str) {
         const states: Dict = {
             'COMPLETE': 'ok',
             'INVALID': 'failed',
@@ -1362,7 +1380,7 @@ export default class bitopro extends Exchange {
         return this.safeString (states, status, status);
     }
 
-    parseTransaction (transaction, currency: Currency = undefined): Transaction {
+    parseTransaction (transaction: Dict, currency: Currency = undefined): Transaction {
         //
         // fetchDeposits
         //
@@ -1741,7 +1759,7 @@ export default class bitopro extends Exchange {
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }
 
-    handleErrors (code, reason, url, method, headers, body, response, requestHeaders, requestBody) {
+    handleErrors (code: int, reason: string, url: string, method: string, headers: Dict, body: string, response, requestHeaders, requestBody) {
         if (response === undefined) {
             return undefined; // fallback to the default error handler
         }

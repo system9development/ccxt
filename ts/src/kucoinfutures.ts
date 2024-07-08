@@ -5,7 +5,7 @@ import { ArgumentsRequired, ExchangeNotAvailable, InvalidOrder, InsufficientFund
 import { Precise } from './base/Precise.js';
 import { TICK_SIZE } from './base/functions/number.js';
 import kucoin from './abstract/kucoinfutures.js';
-import type { TransferEntry, Int, OrderSide, OrderType, OHLCV, Order, Trade, OrderRequest, FundingHistory, Balances, Str, Ticker, Tickers, OrderBook, Transaction, Strings, Market, Currency, Num, MarginModification, TradingFeeInterface, Dict } from './base/types.js';
+import type { TransferEntry, Int, OrderSide, OrderType, OHLCV, Order, Trade, OrderRequest, FundingHistory, Balances, Str, Ticker, Tickers, OrderBook, Transaction, Strings, Market, Currency, Num, MarginModification, TradingFeeInterface, Dict, LeverageTier } from './base/types.js';
 
 //  ---------------------------------------------------------------------------
 
@@ -1223,7 +1223,7 @@ export default class kucoinfutures extends kucoin {
         return this.parsePositions (items, symbols);
     }
 
-    parsePosition (position, market: Market = undefined) {
+    parsePosition (position: Dict, market: Market = undefined) {
         //
         //    {
         //        "code": "200000",
@@ -1364,7 +1364,7 @@ export default class kucoinfutures extends kucoin {
          * @param {string} type 'limit' or 'market'
          * @param {string} side 'buy' or 'sell'
          * @param {float} amount the amount of currency to trade
-         * @param {float} [price] *ignored in "market" orders* the price at which the order is to be fullfilled at in units of the quote currency
+         * @param {float} [price] the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
          * @param {object} [params]  extra parameters specific to the exchange API endpoint
          * @param {float} [params.triggerPrice] The price a trigger order is triggered at
          * @param {float} [params.stopLossPrice] price to trigger stop-loss orders
@@ -1777,7 +1777,7 @@ export default class kucoinfutures extends kucoin {
         if (paginate) {
             return await this.fetchPaginatedCallDynamic ('fetchOrdersByStatus', symbol, since, limit, params) as Order[];
         }
-        const stop = this.safeValue2 (params, 'stop', 'trigger');
+        const stop = this.safeBool2 (params, 'stop', 'trigger');
         const until = this.safeInteger (params, 'until');
         params = this.omit (params, [ 'stop', 'until', 'trigger' ]);
         if (status === 'closed') {
@@ -1989,7 +1989,7 @@ export default class kucoinfutures extends kucoin {
         return this.parseOrder (responseData, market);
     }
 
-    parseOrder (order, market: Market = undefined): Order {
+    parseOrder (order: Dict, market: Market = undefined): Order {
         //
         // fetchOrder, fetchOrdersByStatus
         //
@@ -2415,7 +2415,7 @@ export default class kucoinfutures extends kucoin {
         return this.parseTrades (trades, market, since, limit);
     }
 
-    parseTrade (trade, market: Market = undefined): Trade {
+    parseTrade (trade: Dict, market: Market = undefined): Trade {
         //
         // fetchTrades (public)
         //
@@ -2662,7 +2662,7 @@ export default class kucoinfutures extends kucoin {
         return this.parseTransactions (responseData, currency, since, limit, { 'type': 'withdrawal' });
     }
 
-    async fetchMarketLeverageTiers (symbol: string, params = {}) {
+    async fetchMarketLeverageTiers (symbol: string, params = {}): Promise<LeverageTier[]> {
         /**
          * @method
          * @name kucoinfutures#fetchMarketLeverageTiers
@@ -2702,7 +2702,7 @@ export default class kucoinfutures extends kucoin {
         return this.parseMarketLeverageTiers (data, market);
     }
 
-    parseMarketLeverageTiers (info, market: Market = undefined) {
+    parseMarketLeverageTiers (info, market: Market = undefined): LeverageTier[] {
         /**
          * @ignore
          * @method

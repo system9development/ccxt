@@ -557,7 +557,7 @@ class lykke(Exchange, ImplicitAPI):
         timestamp = self.safe_integer(orderbook, 'timestamp')
         return self.parse_order_book(orderbook, market['symbol'], timestamp, 'bids', 'asks', 'p', 'v')
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         #  public fetchTrades
         #
@@ -713,7 +713,7 @@ class lykke(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         #     {
         #         "id":"1b367978-7e4f-454b-b870-64040d484443",
@@ -777,7 +777,7 @@ class lykke(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
         """
@@ -858,7 +858,10 @@ class lykke(Exchange, ImplicitAPI):
         #         "error":null
         #     }
         #
-        return await self.privateDeleteOrdersOrderId(self.extend(request, params))
+        response = await self.privateDeleteOrdersOrderId(self.extend(request, params))
+        return self.safe_order({
+            'info': response,
+        })
 
     async def cancel_all_orders(self, symbol: Str = None, params={}):
         """
@@ -882,7 +885,12 @@ class lykke(Exchange, ImplicitAPI):
         #         "error":null
         #     }
         #
-        return await self.privateDeleteOrders(self.extend(request, params))
+        response = await self.privateDeleteOrders(self.extend(request, params))
+        return [
+            self.safe_order({
+                'info': response,
+            }),
+        ]
 
     async def fetch_order(self, id: str, symbol: Str = None, params={}):
         """
@@ -1099,7 +1107,7 @@ class lykke(Exchange, ImplicitAPI):
             'info': response,
         }
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # withdraw
         #     "3035b1ad-2005-4587-a986-1f7966be78e0"
@@ -1248,7 +1256,7 @@ class lykke(Exchange, ImplicitAPI):
                 headers['X-Request-ID'] = self.uuid()
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None
         error = self.safe_value(response, 'error', {})

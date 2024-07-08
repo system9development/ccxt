@@ -719,7 +719,7 @@ class huobijp(Exchange, ImplicitAPI):
             result[symbol] = ticker
         return self.filter_by_array_tickers(result, 'symbol', symbols)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # fetchTrades(public)
         #
@@ -1223,7 +1223,7 @@ class huobijp(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         #     {                 id:  13997833014,
         #                    "symbol": "ethbtc",
@@ -1327,7 +1327,7 @@ class huobijp(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
         """
@@ -1468,7 +1468,61 @@ class huobijp(Exchange, ImplicitAPI):
         #         }
         #     }
         #
-        return response
+        return self.parse_cancel_orders(response)
+
+    def parse_cancel_orders(self, orders):
+        #
+        #    {
+        #        "success": [
+        #            "5983466"
+        #        ],
+        #        "failed": [
+        #            {
+        #                "err-msg": "Incorrect order state",
+        #                "order-state": 7,
+        #                "order-id": "",
+        #                "err-code": "order-orderstate-error",
+        #                "client-order-id": "first"
+        #            },
+        #            ...
+        #        ]
+        #    }
+        #
+        #    {
+        #        "errors": [
+        #            {
+        #                "order_id": "769206471845261312",
+        #                "err_code": 1061,
+        #                "err_msg": "This order doesnt exist."
+        #            }
+        #        ],
+        #        "successes": "1258075374411399168,1258075393254871040"
+        #    }
+        #
+        successes = self.safe_string(orders, 'successes')
+        success = None
+        if successes is not None:
+            success = successes.split(',')
+        else:
+            success = self.safe_list(orders, 'success', [])
+        failed = self.safe_list_2(orders, 'errors', 'failed', [])
+        result = []
+        for i in range(0, len(success)):
+            order = success[i]
+            result.append(self.safe_order({
+                'info': order,
+                'id': order,
+                'status': 'canceled',
+            }))
+        for i in range(0, len(failed)):
+            order = failed[i]
+            result.append(self.safe_order({
+                'info': order,
+                'id': self.safe_string_2(order, 'order-id', 'order_id'),
+                'status': 'failed',
+                'clientOrderId': self.safe_string(order, 'client-order-id'),
+            }))
+        return result
 
     async def cancel_all_orders(self, symbol: Str = None, params={}):
         """
@@ -1500,7 +1554,12 @@ class huobijp(Exchange, ImplicitAPI):
         #         }
         #     }
         #
-        return response
+        data = self.safe_dict(response, 'data', {})
+        return [
+            self.safe_order({
+                'info': data,
+            }),
+        ]
 
     def currency_to_precision(self, code, fee, networkCode=None):
         return self.decimal_to_precision(fee, 0, self.currencies[code]['precision'], self.precisionMode)
@@ -1595,7 +1654,7 @@ class huobijp(Exchange, ImplicitAPI):
         # return response
         return self.parse_transactions(response['data'], currency, since, limit)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # fetchDeposits
         #
@@ -1673,7 +1732,7 @@ class huobijp(Exchange, ImplicitAPI):
             },
         }
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         statuses: dict = {
             # deposit statuses
             'unknown': 'failed',
@@ -1782,7 +1841,7 @@ class huobijp(Exchange, ImplicitAPI):
         }) + url
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, httpCode: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None  # fallback to default error handler
         if 'status' in response:

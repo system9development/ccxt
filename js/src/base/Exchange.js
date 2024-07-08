@@ -7,11 +7,11 @@
 // ----------------------------------------------------------------------------
 /* eslint-disable */
 import * as functions from './functions.js';
-const { isNode, deepExtend, extend, clone, flatten, unique, indexBy, sortBy, sortBy2, safeFloat2, groupBy, aggregate, uuid, unCamelCase, precisionFromString, Throttler, capitalize, now, decimalToPrecision, safeValue, safeValue2, safeString, safeString2, seconds, milliseconds, binaryToBase16, numberToBE, base16ToBinary, iso8601, omit, isJsonEncodedObject, safeInteger, sum, omitZero, implodeParams, extractParams, json, merge, binaryConcat, hash, ecdsa, arrayConcat, encode, urlencode, hmac, numberToString, parseTimeframe, safeInteger2, safeStringLower, parse8601, yyyymmdd, safeStringUpper, safeTimestamp, binaryConcatArray, uuidv1, numberToLE, ymdhms, stringToBase64, decode, uuid22, safeIntegerProduct2, safeIntegerProduct, safeStringLower2, yymmdd, base58ToBinary, binaryToBase58, safeTimestamp2, rawencode, keysort, inArray, isEmpty, ordered, filterBy, uuid16, safeFloat, base64ToBinary, safeStringUpper2, urlencodeWithArrayRepeat, microseconds, binaryToBase64, strip, toArray, safeFloatN, safeIntegerN, safeIntegerProductN, safeTimestampN, safeValueN, safeStringN, safeStringLowerN, safeStringUpperN, urlencodeNested, urlencodeBase64, parseDate, ymd, base64ToString, crc32, packb, TRUNCATE, ROUND, DECIMAL_PLACES, NO_PADDING, TICK_SIZE, SIGNIFICANT_DIGITS } = functions;
+const { isNode, deepExtend, extend, clone, flatten, unique, indexBy, sortBy, sortBy2, safeFloat2, groupBy, aggregate, uuid, unCamelCase, precisionFromString, Throttler, capitalize, now, decimalToPrecision, safeValue, safeValue2, safeString, safeString2, seconds, milliseconds, binaryToBase16, numberToBE, base16ToBinary, iso8601, omit, isJsonEncodedObject, safeInteger, sum, omitZero, implodeParams, extractParams, json, merge, binaryConcat, hash, ecdsa, arrayConcat, encode, urlencode, hmac, numberToString, parseTimeframe, safeInteger2, safeStringLower, parse8601, yyyymmdd, safeStringUpper, safeTimestamp, binaryConcatArray, uuidv1, numberToLE, ymdhms, stringToBase64, decode, uuid22, safeIntegerProduct2, safeIntegerProduct, safeStringLower2, yymmdd, base58ToBinary, binaryToBase58, safeTimestamp2, rawencode, keysort, inArray, isEmpty, ordered, filterBy, uuid16, safeFloat, base64ToBinary, safeStringUpper2, urlencodeWithArrayRepeat, microseconds, binaryToBase64, strip, toArray, safeFloatN, safeIntegerN, safeIntegerProductN, safeTimestampN, safeValueN, safeStringN, safeStringLowerN, safeStringUpperN, urlencodeNested, urlencodeBase64, parseDate, ymd, base64ToString, crc32, packb, TRUNCATE, ROUND, DECIMAL_PLACES, NO_PADDING, TICK_SIZE, SIGNIFICANT_DIGITS, sleep } = functions;
 import { keys as keysFunc, values as valuesFunc, vwap as vwapFunc } from './functions.js';
 // import exceptions from "./errors.js"
 import { // eslint-disable-line object-curly-newline
-ExchangeError, BadSymbol, NullResponse, InvalidAddress, InvalidOrder, NotSupported, BadResponse, AuthenticationError, DDoSProtection, RequestTimeout, NetworkError, ProxyError, ExchangeNotAvailable, ArgumentsRequired, RateLimitExceeded, BadRequest, ExchangeClosedByUser } from "./errors.js";
+ExchangeError, BadSymbol, NullResponse, InvalidAddress, InvalidOrder, NotSupported, BadResponse, AuthenticationError, DDoSProtection, RequestTimeout, NetworkError, InvalidProxySettings, ExchangeNotAvailable, ArgumentsRequired, RateLimitExceeded, BadRequest, ExchangeClosedByUser } from "./errors.js";
 import { Precise } from './Precise.js';
 //-----------------------------------------------------------------------------
 import WsClient from './ws/WsClient.js';
@@ -31,6 +31,7 @@ import { SecureRandom } from "../static_dependencies/jsencrypt/lib/jsbn/rng.js";
 export default class Exchange {
     constructor(userConfig = {}) {
         this.throttleProp = undefined;
+        this.sleep = sleep;
         this.api = undefined;
         this.userAgent = undefined;
         this.user_agent = undefined;
@@ -60,6 +61,7 @@ export default class Exchange {
         this.verbose = false;
         this.twofa = undefined; // two-factor authentication (2FA)
         this.balance = {};
+        this.liquidations = {};
         this.orderbooks = {};
         this.tickers = {};
         this.fundingRates = {};
@@ -67,6 +69,7 @@ export default class Exchange {
         this.orders = undefined;
         this.triggerOrders = undefined;
         this.transactions = {};
+        this.myLiquidations = {};
         this.requiresWeb3 = false;
         this.requiresEddsa = false;
         this.enableLastJsonResponse = true;
@@ -264,10 +267,12 @@ export default class Exchange {
         this.balance = {};
         this.orderbooks = {};
         this.tickers = {};
+        this.liquidations = {};
         this.orders = undefined;
         this.trades = {};
         this.transactions = {};
         this.ohlcvs = {};
+        this.myLiquidations = {};
         this.myTrades = undefined;
         this.positions = undefined;
         // web3 and cryptography flags
@@ -349,6 +354,7 @@ export default class Exchange {
             'certified': false,
             'pro': false,
             'alias': false,
+            'dex': false,
             'has': {
                 'publicAPI': true,
                 'privateAPI': true,
@@ -558,6 +564,10 @@ export default class Exchange {
                 'watchTickers': undefined,
                 'watchTrades': undefined,
                 'watchTradesForSymbols': undefined,
+                'watchLiquidations': undefined,
+                'watchLiquidationsForSymbols': undefined,
+                'watchMyLiquidations': undefined,
+                'watchMyLiquidationsForSymbols': undefined,
                 'withdraw': undefined,
                 'ws': undefined,
             },
@@ -1679,7 +1689,7 @@ export default class Exchange {
         const length = usedProxies.length;
         if (length > 1) {
             const joinedProxyNames = usedProxies.join(',');
-            throw new ProxyError(this.id + ' you have multiple conflicting proxy settings (' + joinedProxyNames + '), please use only one from : proxyUrl, proxy_url, proxyUrlCallback, proxy_url_callback');
+            throw new InvalidProxySettings(this.id + ' you have multiple conflicting proxy settings (' + joinedProxyNames + '), please use only one from : proxyUrl, proxy_url, proxyUrlCallback, proxy_url_callback');
         }
         return proxyUrl;
     }
@@ -1743,7 +1753,7 @@ export default class Exchange {
         const length = usedProxies.length;
         if (length > 1) {
             const joinedProxyNames = usedProxies.join(',');
-            throw new ProxyError(this.id + ' you have multiple conflicting proxy settings (' + joinedProxyNames + '), please use only one from: httpProxy, httpsProxy, httpProxyCallback, httpsProxyCallback, socksProxy, socksProxyCallback');
+            throw new InvalidProxySettings(this.id + ' you have multiple conflicting proxy settings (' + joinedProxyNames + '), please use only one from: httpProxy, httpsProxy, httpProxyCallback, httpsProxyCallback, socksProxy, socksProxyCallback');
         }
         return [httpProxy, httpsProxy, socksProxy];
     }
@@ -1783,13 +1793,13 @@ export default class Exchange {
         const length = usedProxies.length;
         if (length > 1) {
             const joinedProxyNames = usedProxies.join(',');
-            throw new ProxyError(this.id + ' you have multiple conflicting proxy settings (' + joinedProxyNames + '), please use only one from: wsProxy, wssProxy, wsSocksProxy');
+            throw new InvalidProxySettings(this.id + ' you have multiple conflicting proxy settings (' + joinedProxyNames + '), please use only one from: wsProxy, wssProxy, wsSocksProxy');
         }
         return [wsProxy, wssProxy, wsSocksProxy];
     }
     checkConflictingProxies(proxyAgentSet, proxyUrlSet) {
         if (proxyAgentSet && proxyUrlSet) {
-            throw new ProxyError(this.id + ' you have multiple conflicting proxy settings, please use only one from : proxyUrl, httpProxy, httpsProxy, socksProxy');
+            throw new InvalidProxySettings(this.id + ' you have multiple conflicting proxy settings, please use only one from : proxyUrl, httpProxy, httpsProxy, socksProxy');
         }
     }
     findMessageHashes(client, element) {
@@ -1913,6 +1923,24 @@ export default class Exchange {
     }
     async fetchTradesWs(symbol, since = undefined, limit = undefined, params = {}) {
         throw new NotSupported(this.id + ' fetchTradesWs() is not supported yet');
+    }
+    async watchLiquidations(symbol, since = undefined, limit = undefined, params = {}) {
+        if (this.has['watchLiquidationsForSymbols']) {
+            return this.watchLiquidationsForSymbols([symbol], since, limit, params);
+        }
+        throw new NotSupported(this.id + ' watchLiquidations() is not supported yet');
+    }
+    async watchLiquidationsForSymbols(symbols, since = undefined, limit = undefined, params = {}) {
+        throw new NotSupported(this.id + ' watchLiquidationsForSymbols() is not supported yet');
+    }
+    async watchMyLiquidations(symbol, since = undefined, limit = undefined, params = {}) {
+        if (this.has['watchMyLiquidationsForSymbols']) {
+            return this.watchMyLiquidationsForSymbols([symbol], since, limit, params);
+        }
+        throw new NotSupported(this.id + ' watchMyLiquidations() is not supported yet');
+    }
+    async watchMyLiquidationsForSymbols(symbols, since = undefined, limit = undefined, params = {}) {
+        throw new NotSupported(this.id + ' watchMyLiquidationsForSymbols() is not supported yet');
     }
     async watchTrades(symbol, since = undefined, limit = undefined, params = {}) {
         throw new NotSupported(this.id + ' watchTrades() is not supported yet');
@@ -2923,6 +2951,17 @@ export default class Exchange {
         trade['cost'] = this.parseNumber(cost);
         return trade;
     }
+    findNearestCeiling(arr, providedValue) {
+        //  i.e. findNearestCeiling ([ 10, 30, 50],  23) returns 30
+        const length = arr.length;
+        for (let i = 0; i < length; i++) {
+            const current = arr[i];
+            if (providedValue <= current) {
+                return current;
+            }
+        }
+        return arr[length - 1];
+    }
     invertFlatStringDictionary(dict) {
         const reversed = {};
         const keys = Object.keys(dict);
@@ -3683,6 +3722,20 @@ export default class Exchange {
         }
         return [value, params];
     }
+    handleParamBool(params, paramName, defaultValue = undefined) {
+        const value = this.safeBool(params, paramName, defaultValue);
+        if (value !== undefined) {
+            params = this.omit(params, paramName);
+        }
+        return [value, params];
+    }
+    handleParamBool2(params, paramName1, paramName2, defaultValue = undefined) {
+        const value = this.safeBool2(params, paramName1, paramName2, defaultValue);
+        if (value !== undefined) {
+            params = this.omit(params, [paramName1, paramName2]);
+        }
+        return [value, params];
+    }
     resolvePath(path, params) {
         return [
             this.implodeParams(path, params),
@@ -3740,7 +3793,30 @@ export default class Exchange {
         this.last_request_headers = request['headers'];
         this.last_request_body = request['body'];
         this.last_request_url = request['url'];
-        return await this.fetch(request['url'], request['method'], request['headers'], request['body']);
+        let retries = undefined;
+        [retries, params] = this.handleOptionAndParams(params, path, 'maxRetriesOnFailure', 0);
+        let retryDelay = undefined;
+        [retryDelay, params] = this.handleOptionAndParams(params, path, 'maxRetriesOnFailureDelay', 0);
+        for (let i = 0; i < retries + 1; i++) {
+            try {
+                return await this.fetch(request['url'], request['method'], request['headers'], request['body']);
+            }
+            catch (e) {
+                if (e instanceof NetworkError) {
+                    if (i < retries) {
+                        if (this.verbose) {
+                            this.log('Request failed with the error: ' + e.toString() + ', retrying ' + (i + 1).toString() + ' of ' + retries.toString() + '...');
+                        }
+                        if ((retryDelay !== undefined) && (retryDelay !== 0)) {
+                            await this.sleep(retryDelay);
+                        }
+                        continue;
+                    }
+                }
+                throw e;
+            }
+        }
+        return undefined; // this line is never reached, but exists for c# value return requirement
     }
     async request(path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined, config = {}) {
         return await this.fetch2(path, api, method, params, headers, body, config);

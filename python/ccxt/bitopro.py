@@ -316,7 +316,7 @@ class bitopro(Exchange, ImplicitAPI):
         #
         return self.parse_markets(markets)
 
-    def parse_market(self, market) -> Market:
+    def parse_market(self, market: dict) -> Market:
         active = not self.safe_value(market, 'maintain')
         id = self.safe_string(market, 'pair')
         uppercaseId = id.upper()
@@ -512,7 +512,7 @@ class bitopro(Exchange, ImplicitAPI):
         #
         return self.parse_order_book(response, market['symbol'], None, 'bids', 'asks', 'price', 'amount')
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # fetchTrades
         #         {
@@ -869,7 +869,7 @@ class bitopro(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, None)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         # createOrder
         #         {
@@ -964,7 +964,7 @@ class bitopro(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
         """
@@ -1038,6 +1038,20 @@ class bitopro(Exchange, ImplicitAPI):
         #
         return self.parse_order(response, market)
 
+    def parse_cancel_orders(self, data):
+        dataKeys = list(data.keys())
+        orders = []
+        for i in range(0, len(dataKeys)):
+            marketId = dataKeys[i]
+            orderIds = data[marketId]
+            for j in range(0, len(orderIds)):
+                orders.append(self.safe_order({
+                    'info': orderIds[j],
+                    'id': orderIds[j],
+                    'symbol': self.safe_symbol(marketId),
+                }))
+        return orders
+
     def cancel_orders(self, ids, symbol: Str = None, params={}):
         """
         cancel multiple orders
@@ -1065,7 +1079,8 @@ class bitopro(Exchange, ImplicitAPI):
         #         }
         #     }
         #
-        return response
+        data = self.safe_dict(response, 'data')
+        return self.parse_cancel_orders(data)
 
     def cancel_all_orders(self, symbol: Str = None, params={}):
         """
@@ -1086,7 +1101,7 @@ class bitopro(Exchange, ImplicitAPI):
             response = self.privateDeleteOrdersPair(self.extend(request, params))
         else:
             response = self.privateDeleteOrdersAll(self.extend(request, params))
-        result = self.safe_value(response, 'data', {})
+        data = self.safe_value(response, 'data', {})
         #
         #     {
         #         "data":{
@@ -1097,7 +1112,7 @@ class bitopro(Exchange, ImplicitAPI):
         #         }
         #     }
         #
-        return result
+        return self.parse_cancel_orders(data)
 
     def fetch_order(self, id: str, symbol: Str = None, params={}):
         """
@@ -1259,7 +1274,7 @@ class bitopro(Exchange, ImplicitAPI):
         #
         return self.parse_trades(trades, market, since, limit)
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         states: dict = {
             'COMPLETE': 'ok',
             'INVALID': 'failed',
@@ -1273,7 +1288,7 @@ class bitopro(Exchange, ImplicitAPI):
         }
         return self.safe_string(states, status, status)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # fetchDeposits
         #
@@ -1618,7 +1633,7 @@ class bitopro(Exchange, ImplicitAPI):
         url = self.urls['api']['rest'] + url
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None  # fallback to the default error handler
         if code >= 200 and code < 300:

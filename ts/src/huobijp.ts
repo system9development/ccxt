@@ -6,7 +6,7 @@ import { AuthenticationError, ExchangeError, PermissionDenied, ExchangeNotAvaila
 import { Precise } from './base/Precise.js';
 import { TRUNCATE, TICK_SIZE } from './base/functions/number.js';
 import { sha256 } from './static_dependencies/noble-hashes/sha256.js';
-import type { Account, Balances, Currencies, Currency, Dict, Int, Market, Num, OHLCV, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, Transaction } from './base/types.js';
+import type { Account, Balances, Currencies, Currency, Dict, Int, Market, Num, OHLCV, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, Transaction, int } from './base/types.js';
 
 // ---------------------------------------------------------------------------
 
@@ -737,7 +737,7 @@ export default class huobijp extends Exchange {
         return this.filterByArrayTickers (result, 'symbol', symbols);
     }
 
-    parseTrade (trade, market: Market = undefined): Trade {
+    parseTrade (trade: Dict, market: Market = undefined): Trade {
         //
         // fetchTrades (public)
         //
@@ -1305,7 +1305,7 @@ export default class huobijp extends Exchange {
         return this.safeString (statuses, status, status);
     }
 
-    parseOrder (order, market: Market = undefined): Order {
+    parseOrder (order: Dict, market: Market = undefined): Order {
         //
         //     {                  id:  13997833014,
         //                    "symbol": "ethbtc",
@@ -1418,7 +1418,7 @@ export default class huobijp extends Exchange {
          * @param {string} type 'market' or 'limit'
          * @param {string} side 'buy' or 'sell'
          * @param {float} amount how much of currency you want to trade in units of base currency
-         * @param {float} [price] the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+         * @param {float} [price] the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
          * @param {object} [params] extra parameters specific to the exchange API endpoint
          * @returns {object} an [order structure]{@link https://docs.ccxt.com/#/?id=order-structure}
          */
@@ -1571,7 +1571,65 @@ export default class huobijp extends Exchange {
         //         }
         //     }
         //
-        return response;
+        return this.parseCancelOrders (response);
+    }
+
+    parseCancelOrders (orders) {
+        //
+        //    {
+        //        "success": [
+        //            "5983466"
+        //        ],
+        //        "failed": [
+        //            {
+        //                "err-msg": "Incorrect order state",
+        //                "order-state": 7,
+        //                "order-id": "",
+        //                "err-code": "order-orderstate-error",
+        //                "client-order-id": "first"
+        //            },
+        //            ...
+        //        ]
+        //    }
+        //
+        //    {
+        //        "errors": [
+        //            {
+        //                "order_id": "769206471845261312",
+        //                "err_code": 1061,
+        //                "err_msg": "This order doesnt exist."
+        //            }
+        //        ],
+        //        "successes": "1258075374411399168,1258075393254871040"
+        //    }
+        //
+        const successes = this.safeString (orders, 'successes');
+        let success = undefined;
+        if (successes !== undefined) {
+            success = successes.split (',');
+        } else {
+            success = this.safeList (orders, 'success', []);
+        }
+        const failed = this.safeList2 (orders, 'errors', 'failed', []);
+        const result = [];
+        for (let i = 0; i < success.length; i++) {
+            const order = success[i];
+            result.push (this.safeOrder ({
+                'info': order,
+                'id': order,
+                'status': 'canceled',
+            }));
+        }
+        for (let i = 0; i < failed.length; i++) {
+            const order = failed[i];
+            result.push (this.safeOrder ({
+                'info': order,
+                'id': this.safeString2 (order, 'order-id', 'order_id'),
+                'status': 'failed',
+                'clientOrderId': this.safeString (order, 'client-order-id'),
+            }));
+        }
+        return result;
     }
 
     async cancelAllOrders (symbol: Str = undefined, params = {}) {
@@ -1607,7 +1665,12 @@ export default class huobijp extends Exchange {
         //         }
         //     }
         //
-        return response;
+        const data = this.safeDict (response, 'data', {});
+        return [
+            this.safeOrder ({
+                'info': data,
+            }),
+        ];
     }
 
     currencyToPrecision (code, fee, networkCode = undefined) {
@@ -1721,7 +1784,7 @@ export default class huobijp extends Exchange {
         return this.parseTransactions (response['data'], currency, since, limit);
     }
 
-    parseTransaction (transaction, currency: Currency = undefined): Transaction {
+    parseTransaction (transaction: Dict, currency: Currency = undefined): Transaction {
         //
         // fetchDeposits
         //
@@ -1802,7 +1865,7 @@ export default class huobijp extends Exchange {
         };
     }
 
-    parseTransactionStatus (status) {
+    parseTransactionStatus (status: Str) {
         const statuses: Dict = {
             // deposit statuses
             'unknown': 'failed',
@@ -1924,7 +1987,7 @@ export default class huobijp extends Exchange {
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }
 
-    handleErrors (httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody) {
+    handleErrors (httpCode: int, reason: string, url: string, method: string, headers: Dict, body: string, response, requestHeaders, requestBody) {
         if (response === undefined) {
             return undefined; // fallback to default error handler
         }

@@ -121,7 +121,7 @@ class htx extends \ccxt\async\htx {
                         '2002' => '\\ccxt\\AuthenticationError', // array( action => 'sub', code => 2002, ch => 'accounts.update#2', message => 'invalid.auth.state' )
                         '2021' => '\\ccxt\\BadRequest',
                         '2001' => '\\ccxt\\BadSymbol', // array( action => 'sub', code => 2001, ch => 'orders#2ltcusdt', message => 'invalid.symbol')
-                        '2011' => '\\ccxt\\BadSymbol', // array( op => 'sub', cid => '1649149285', topic => 'orders_cross.hereltc-usdt', 'err-code' => 2011, 'err-msg' => "Contract doesn't exist.", ts => 1649149287637 )
+                        '2011' => '\\ccxt\\BadSymbol', // array( op => 'sub', cid => '1649149285', topic => 'orders_cross.ltc-usdt', 'err-code' => 2011, 'err-msg' => "Contract doesn't exist.", ts => 1649149287637 )
                         '2040' => '\\ccxt\\BadRequest', // array( op => 'sub', cid => '1649152947', 'err-code' => 2040, 'err-msg' => 'Missing required parameter.', ts => 1649152948684 )
                         '4007' => '\\ccxt\\BadRequest', // array( op => 'sub', cid => '1', topic => 'accounts_unify.USDT', 'err-code' => 4007, 'err-msg' => 'Non - single account user is not available, please check through the cross and isolated account asset interface', ts => 1698419318540 )
                     ),
@@ -649,20 +649,19 @@ class htx extends \ccxt\async\htx {
         //     }
         //
         $messageHash = $this->safe_string($message, 'ch');
-        $tick = $this->safe_value($message, 'tick');
+        $tick = $this->safe_dict($message, 'tick');
         $event = $this->safe_string($tick, 'event');
-        $ch = $this->safe_value($message, 'ch');
+        $ch = $this->safe_string($message, 'ch');
         $parts = explode('.', $ch);
         $marketId = $this->safe_string($parts, 1);
         $symbol = $this->safe_symbol($marketId);
-        $orderbook = $this->safe_value($this->orderbooks, $symbol);
-        if ($orderbook === null) {
+        if (!(is_array($this->orderbooks) && array_key_exists($symbol, $this->orderbooks))) {
             $size = $this->safe_string($parts, 3);
             $sizeParts = explode('_', $size);
             $limit = $this->safe_integer($sizeParts, 1);
-            $orderbook = $this->order_book(array(), $limit);
-            $this->orderbooks[$symbol] = $orderbook;
+            $this->orderbooks[$symbol] = $this->order_book(array(), $limit);
         }
+        $orderbook = $this->orderbooks[$symbol];
         if (($event === null) && ($orderbook['nonce'] === null)) {
             $orderbook->cache[] = $message;
         } else {

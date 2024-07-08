@@ -8,7 +8,7 @@ import { Precise } from './base/Precise.js';
 import { md5 } from './static_dependencies/noble-hashes/md5.js';
 import { sha256 } from './static_dependencies/noble-hashes/sha256.js';
 import { rsa } from './base/functions/rsa.js';
-import type { Balances, Currency, Dict, Int, Market, Num, OHLCV, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TradingFeeInterface, TradingFees, Transaction } from './base/types.js';
+import type { Balances, Currency, Dict, Int, Market, Num, OHLCV, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TradingFeeInterface, TradingFees, Transaction, int } from './base/types.js';
 
 //  ---------------------------------------------------------------------------
 
@@ -809,7 +809,7 @@ export default class lbank extends Exchange {
         return this.parseOrderBook (orderbook, market['symbol'], timestamp);
     }
 
-    parseTrade (trade, market: Market = undefined): Trade {
+    parseTrade (trade: Dict, market: Market = undefined): Trade {
         //
         // fetchTrades (old) spotPublicGetTrades
         //
@@ -1234,7 +1234,7 @@ export default class lbank extends Exchange {
         return this.parseBalance (response);
     }
 
-    parseTradingFee (fee, market: Market = undefined): TradingFeeInterface {
+    parseTradingFee (fee: Dict, market: Market = undefined): TradingFeeInterface {
         //
         //      {
         //          "symbol":"skt_usdt",
@@ -1323,7 +1323,7 @@ export default class lbank extends Exchange {
          * @param {string} type 'market' or 'limit'
          * @param {string} side 'buy' or 'sell'
          * @param {float} amount how much of currency you want to trade in units of base currency
-         * @param {float} [price] the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+         * @param {float} [price] the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
          * @param {object} [params] extra parameters specific to the exchange API endpoint
          * @returns {object} an [order structure]{@link https://docs.ccxt.com/#/?id=order-structure}
          */
@@ -1425,7 +1425,7 @@ export default class lbank extends Exchange {
         return this.safeString (statuses, status, status);
     }
 
-    parseOrder (order, market: Market = undefined): Order {
+    parseOrder (order: Dict, market: Market = undefined): Order {
         //
         // fetchOrderSupplement (private)
         //
@@ -1492,6 +1492,27 @@ export default class lbank extends Exchange {
         //          "status":-1
         //      }
         //
+        // cancelOrder
+        //
+        //    {
+        //        "executedQty":0.0,
+        //        "price":0.05,
+        //        "origQty":100.0,
+        //        "tradeType":"buy",
+        //        "status":0
+        //    }
+        //
+        // cancelAllOrders
+        //
+        //    {
+        //        "executedQty":0.00000000000000000000,
+        //        "orderId":"293ef71b-3e67-4962-af93-aa06990a045f",
+        //        "price":0.05000000000000000000,
+        //        "origQty":100.00000000000000000000,
+        //        "tradeType":"buy",
+        //        "status":0
+        //    }
+        //
         const id = this.safeString2 (order, 'orderId', 'order_id');
         const clientOrderId = this.safeString2 (order, 'clientOrderId', 'custom_id');
         const timestamp = this.safeInteger2 (order, 'time', 'create_time');
@@ -1501,7 +1522,7 @@ export default class lbank extends Exchange {
         let timeInForce = undefined;
         let postOnly = false;
         let type = 'limit';
-        const rawType = this.safeString (order, 'type'); // buy, sell, buy_market, sell_market, buy_maker,sell_maker,buy_ioc,sell_ioc, buy_fok, sell_fok
+        const rawType = this.safeString2 (order, 'type', 'tradeType'); // buy, sell, buy_market, sell_market, buy_maker,sell_maker,buy_ioc,sell_ioc, buy_fok, sell_fok
         const parts = rawType.split ('_');
         const side = this.safeString (parts, 0);
         const typePart = this.safeString (parts, 1); // market, maker, ioc, fok or undefined (limit)
@@ -1871,12 +1892,12 @@ export default class lbank extends Exchange {
         //          "origQty":100.0,
         //          "tradeType":"buy",
         //          "status":0
-        //          },
+        //      },
         //      "error_code":0,
         //      "ts":1648501286196
         //  }
-        const result = this.safeValue (response, 'data', {});
-        return result;
+        const data = this.safeDict (response, 'data', {});
+        return this.parseOrder (data);
     }
 
     async cancelAllOrders (symbol: Str = undefined, params = {}) {
@@ -1915,8 +1936,8 @@ export default class lbank extends Exchange {
         //          "ts":1648506641469
         //      }
         //
-        const result = this.safeValue (response, 'data', []);
-        return result;
+        const data = this.safeList (response, 'data', []);
+        return this.parseOrders (data);
     }
 
     getNetworkCodeForCurrency (currencyCode, params) {
@@ -2115,7 +2136,7 @@ export default class lbank extends Exchange {
         return this.safeString (this.safeValue (statuses, type, {}), status, status);
     }
 
-    parseTransaction (transaction, currency: Currency = undefined): Transaction {
+    parseTransaction (transaction: Dict, currency: Currency = undefined): Transaction {
         //
         // fetchDeposits (private)
         //
@@ -2313,7 +2334,7 @@ export default class lbank extends Exchange {
         return this.parseTransactions (withdraws, currency, since, limit);
     }
 
-    async fetchTransactionFees (codes: string[] = undefined, params = {}) {
+    async fetchTransactionFees (codes: Strings = undefined, params = {}) {
         /**
          * @method
          * @name lbank#fetchTransactionFees
@@ -2756,7 +2777,7 @@ export default class lbank extends Exchange {
         return pem + '-----END PRIVATE KEY-----';
     }
 
-    handleErrors (httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody) {
+    handleErrors (httpCode: int, reason: string, url: string, method: string, headers: Dict, body: string, response, requestHeaders, requestBody) {
         if (response === undefined) {
             return undefined;
         }

@@ -29,7 +29,7 @@ class bigone(Exchange, ImplicitAPI):
             'name': 'BigONE',
             'countries': ['CN'],
             'version': 'v3',
-            'rateLimit': 1200,  # 500 request per 10 minutes
+            'rateLimit': 20,  # 500 requests per 10 seconds
             'has': {
                 'CORS': None,
                 'spot': True,
@@ -1009,7 +1009,7 @@ class bigone(Exchange, ImplicitAPI):
             'nonce': None,
         }
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # fetchTrades(public)
         #
@@ -1302,7 +1302,7 @@ class bigone(Exchange, ImplicitAPI):
         }
         return self.safe_string(types, type, type)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         #    {
         #        "id": "42154072251",
@@ -1397,7 +1397,7 @@ class bigone(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param float [params.triggerPrice]: the price at which a trigger order is triggered at
         :param bool [params.postOnly]: if True, the order will only be posted to the order book and not executed immediately
@@ -1539,7 +1539,25 @@ class bigone(Exchange, ImplicitAPI):
         #         }
         #     }
         #
-        return response
+        data = self.safe_dict(response, 'data', {})
+        cancelled = self.safe_list(data, 'cancelled', [])
+        failed = self.safe_list(data, 'failed', [])
+        result = []
+        for i in range(0, len(cancelled)):
+            orderId = cancelled[i]
+            result.append(self.safe_order({
+                'info': orderId,
+                'id': orderId,
+                'status': 'canceled',
+            }))
+        for i in range(0, len(failed)):
+            orderId = failed[i]
+            result.append(self.safe_order({
+                'info': orderId,
+                'id': orderId,
+                'status': 'failed',
+            }))
+        return result
 
     def fetch_order(self, id: str, symbol: Str = None, params={}):
         """
@@ -1780,7 +1798,7 @@ class bigone(Exchange, ImplicitAPI):
             'info': response,
         }
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         statuses: dict = {
             # what are other statuses here?
             'WITHHOLD': 'ok',  # deposits
@@ -1791,7 +1809,7 @@ class bigone(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # fetchDeposits
         #
@@ -2094,7 +2112,7 @@ class bigone(Exchange, ImplicitAPI):
         data = self.safe_dict(response, 'data', {})
         return self.parse_transaction(data, currency)
 
-    def handle_errors(self, httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, httpCode: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None  # fallback to default error handler
         #

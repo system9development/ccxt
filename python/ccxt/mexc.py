@@ -6,7 +6,7 @@
 from ccxt.base.exchange import Exchange
 from ccxt.abstract.mexc import ImplicitAPI
 import hashlib
-from ccxt.base.types import Account, Balances, Currencies, Currency, IndexType, Int, Leverage, MarginModification, Market, Num, Order, OrderBook, OrderRequest, OrderSide, OrderType, Position, Str, Strings, Ticker, Tickers, Trade, TradingFees, Transaction, TransferEntry, TransferEntries
+from ccxt.base.types import Account, Balances, Currencies, Currency, IndexType, Int, Leverage, LeverageTier, LeverageTiers, MarginModification, Market, Num, Order, OrderBook, OrderRequest, OrderSide, OrderType, Position, Str, Strings, Ticker, Tickers, Trade, TradingFees, Transaction, TransferEntry, TransferEntries
 from typing import List
 from ccxt.base.errors import ExchangeError
 from ccxt.base.errors import AuthenticationError
@@ -161,7 +161,7 @@ class mexc(Exchange, ImplicitAPI):
                 'fees': [
                     'https://www.mexc.com/fee',
                 ],
-                'referral': 'https://m.mexc.com/auth/signup?inviteCode=1FQ1G',
+                'referral': 'https://www.mexc.com/register?inviteCode=mexc-1FQ1GNu1',
             },
             'api': {
                 'spot': {
@@ -235,6 +235,7 @@ class mexc(Exchange, ImplicitAPI):
                             'sub-account/margin': 1,
                             'batchOrders': 10,
                             'capital/withdraw/apply': 1,
+                            'capital/withdraw': 1,
                             'capital/transfer': 1,
                             'capital/transfer/internal': 1,
                             'capital/deposit/address': 1,
@@ -253,6 +254,7 @@ class mexc(Exchange, ImplicitAPI):
                             'margin/order': 1,
                             'margin/openOrders': 1,
                             'userDataStream': 1,
+                            'capital/withdraw': 1,
                         },
                     },
                 },
@@ -1069,7 +1071,7 @@ class mexc(Exchange, ImplicitAPI):
             chains = self.safe_value(currency, 'networkList', [])
             for j in range(0, len(chains)):
                 chain = chains[j]
-                networkId = self.safe_string(chain, 'network')
+                networkId = self.safe_string_2(chain, 'network', 'netWork')
                 network = self.network_id_to_code(networkId)
                 isDepositEnabled = self.safe_bool(chain, 'depositEnable', False)
                 isWithdrawEnabled = self.safe_bool(chain, 'withdrawEnable', False)
@@ -1535,7 +1537,7 @@ class mexc(Exchange, ImplicitAPI):
             trades = self.safe_value(response, 'data')
         return self.parse_trades(trades, market, since, limit)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         id = None
         timestamp = None
         orderId = None
@@ -2122,7 +2124,7 @@ class mexc(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param str [params.marginMode]: only 'isolated' is supported for spot-margin trading
         :param float [params.triggerPrice]: The price at which a trigger order is triggered at
@@ -2302,7 +2304,7 @@ class mexc(Exchange, ImplicitAPI):
         #     {"success":true,"code":0,"data":259208506303929856}
         #
         data = self.safe_string(response, 'data')
-        return self.parse_order(data, market)
+        return self.safe_order({'id': data}, market)
 
     def create_orders(self, orders: List[OrderRequest], params={}):
         """
@@ -3019,7 +3021,7 @@ class mexc(Exchange, ImplicitAPI):
             data = self.safe_list(response, 'data', [])
             return self.parse_orders(data, market)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         # spot: createOrder
         #
@@ -4032,7 +4034,7 @@ class mexc(Exchange, ImplicitAPI):
         sorted = self.sort_by(rates, 'timestamp')
         return self.filter_by_symbol_since_limit(sorted, market['symbol'], since, limit)
 
-    def fetch_leverage_tiers(self, symbols: Strings = None, params={}):
+    def fetch_leverage_tiers(self, symbols: Strings = None, params={}) -> LeverageTiers:
         """
         retrieve information on the maximum leverage, and maintenance margin for trades of varying trade sizes, if a market has a leverage tier of 0, then the leverage tiers cannot be obtained for self market
         :see: https://mexcdevelop.github.io/apidocs/contract_v1_en/#get-the-contract-information
@@ -4091,7 +4093,7 @@ class mexc(Exchange, ImplicitAPI):
         data = self.safe_list(response, 'data')
         return self.parse_leverage_tiers(data, symbols, 'symbol')
 
-    def parse_market_leverage_tiers(self, info, market: Market = None):
+    def parse_market_leverage_tiers(self, info, market: Market = None) -> List[LeverageTier]:
         #
         #    {
         #        "symbol": "BTC_USDT",
@@ -4144,8 +4146,8 @@ class mexc(Exchange, ImplicitAPI):
                 {
                     'tier': 0,
                     'currency': self.safe_currency_code(quoteId),
-                    'notionalFloor': None,
-                    'notionalCap': None,
+                    'minNotional': None,
+                    'maxNotional': None,
                     'maintenanceMarginRate': None,
                     'maxLeverage': self.safe_number(info, 'maxLeverage'),
                     'info': info,
@@ -4156,8 +4158,8 @@ class mexc(Exchange, ImplicitAPI):
             tiers.append({
                 'tier': self.parse_number(Precise.string_div(cap, riskIncrVol)),
                 'currency': self.safe_currency_code(quoteId),
-                'notionalFloor': self.parse_number(floor),
-                'notionalCap': self.parse_number(cap),
+                'minNotional': self.parse_number(floor),
+                'maxNotional': self.parse_number(cap),
                 'maintenanceMarginRate': self.parse_number(maintenanceMarginRate),
                 'maxLeverage': self.parse_number(Precise.string_div('1', initialMarginRate)),
                 'info': info,
@@ -4384,7 +4386,7 @@ class mexc(Exchange, ImplicitAPI):
         #
         return self.parse_transactions(response, currency, since, limit)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # fetchDeposits
         #
@@ -4558,7 +4560,7 @@ class mexc(Exchange, ImplicitAPI):
         data = self.safe_list(response, 'data', [])
         return self.parse_positions(data, symbols)
 
-    def parse_position(self, position, market: Market = None):
+    def parse_position(self, position: dict, market: Market = None):
         #
         # fetchPositions
         #
@@ -4894,7 +4896,7 @@ class mexc(Exchange, ImplicitAPI):
     def withdraw(self, code: str, amount: float, address: str, tag=None, params={}):
         """
         make a withdrawal
-        :see: https://mexcdevelop.github.io/apidocs/spot_v3_en/#withdraw
+        :see: https://mexcdevelop.github.io/apidocs/spot_v3_en/#withdraw-new
         :param str code: unified currency code
         :param float amount: the amount to withdraw
         :param str address: the address to withdraw to
@@ -4904,7 +4906,7 @@ class mexc(Exchange, ImplicitAPI):
         """
         tag, params = self.handle_withdraw_tag_and_params(tag, params)
         networks = self.safe_value(self.options, 'networks', {})
-        network = self.safe_string_2(params, 'network', 'chain')  # self line allows the user to specify either ERC20 or ETH
+        network = self.safe_string_2(params, 'network', 'netWork')  # self line allows the user to specify either ERC20 or ETH
         network = self.safe_string(networks, network, network)  # handle ETH > ERC-20 alias
         self.check_address(address)
         self.load_markets()
@@ -4917,9 +4919,9 @@ class mexc(Exchange, ImplicitAPI):
         if tag is not None:
             request['memo'] = tag
         if network is not None:
-            request['network'] = network
-            params = self.omit(params, ['network', 'chain'])
-        response = self.spotPrivatePostCapitalWithdrawApply(self.extend(request, params))
+            request['netWork'] = network
+            params = self.omit(params, ['network', 'netWork'])
+        response = self.spotPrivatePostCapitalWithdraw(self.extend(request, params))
         #
         #     {
         #       "id":"7213fea8e94b4a5593d507237e5a555b"
@@ -4955,7 +4957,7 @@ class mexc(Exchange, ImplicitAPI):
             'hedged': (positionMode == 1),
         }
 
-    def fetch_transaction_fees(self, codes: List[str] = None, params={}):
+    def fetch_transaction_fees(self, codes: Strings = None, params={}):
         """
         fetch deposit and withdrawal fees
         :see: https://mexcdevelop.github.io/apidocs/spot_v3_en/#query-the-currency-information
@@ -5342,7 +5344,7 @@ class mexc(Exchange, ImplicitAPI):
                 headers['Signature'] = signature
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None
         # spot

@@ -6,7 +6,7 @@
 from ccxt.async_support.base.exchange import Exchange
 from ccxt.abstract.krakenfutures import ImplicitAPI
 import hashlib
-from ccxt.base.types import Balances, Currency, Int, Leverage, Leverages, Market, Num, Order, OrderBook, OrderRequest, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TransferEntry
+from ccxt.base.types import Balances, Currency, Int, Leverage, Leverages, LeverageTier, LeverageTiers, Market, Num, Order, OrderBook, OrderRequest, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TransferEntry
 from typing import List
 from ccxt.base.errors import ExchangeError
 from ccxt.base.errors import AuthenticationError
@@ -96,6 +96,7 @@ class krakenfutures(Exchange, ImplicitAPI):
                     'public': 'https://demo-futures.kraken.com/derivatives/api/',
                     'private': 'https://demo-futures.kraken.com/derivatives/api/',
                     'charts': 'https://demo-futures.kraken.com/api/charts/',
+                    'history': 'https://demo-futures.kraken.com/api/history/',
                     'www': 'https://demo-futures.kraken.com',
                 },
                 'logo': 'https://user-images.githubusercontent.com/24300605/81436764-b22fd580-9172-11ea-9703-742783e6376d.jpg',
@@ -136,6 +137,8 @@ class krakenfutures(Exchange, ImplicitAPI):
                         'transfers',
                         'leveragepreferences',
                         'pnlpreferences',
+                        'assignmentprogram/current',
+                        'assignmentprogram/history',
                     ],
                     'post': [
                         'sendorder',
@@ -146,6 +149,8 @@ class krakenfutures(Exchange, ImplicitAPI):
                         'cancelallorders',
                         'cancelallordersafter',
                         'withdrawal',                              # for futures wallet -> kraken spot wallet
+                        'assignmentprogram/add',
+                        'assignmentprogram/delete',
                     ],
                     'put': [
                         'leveragepreferences',
@@ -805,7 +810,7 @@ class krakenfutures(Exchange, ImplicitAPI):
             rawTrades = self.safe_list(response, 'history', [])
         return self.parse_trades(rawTrades, market, since, limit)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # fetchTrades(recent trades)
         #
@@ -1207,7 +1212,45 @@ class krakenfutures(Exchange, ImplicitAPI):
         if symbol is not None:
             request['symbol'] = self.market_id(symbol)
         response = await self.privatePostCancelallorders(self.extend(request, params))
-        return response
+        #
+        #    {
+        #        result: 'success',
+        #        cancelStatus: {
+        #          receivedTime: '2024-06-06T01:12:44.814Z',
+        #          cancelOnly: 'PF_XRPUSD',
+        #          status: 'cancelled',
+        #          cancelledOrders: [{order_id: '272fd0ac-45c0-4003-b84d-d39b9e86bd36'}],
+        #          orderEvents: [
+        #            {
+        #              uid: '272fd0ac-45c0-4003-b84d-d39b9e86bd36',
+        #              order: {
+        #                orderId: '272fd0ac-45c0-4003-b84d-d39b9e86bd36',
+        #                cliOrdId: null,
+        #                type: 'lmt',
+        #                symbol: 'PF_XRPUSD',
+        #                side: 'buy',
+        #                quantity: '10',
+        #                filled: '0',
+        #                limitPrice: '0.4',
+        #                reduceOnly: False,
+        #                timestamp: '2024-06-06T01:11:16.045Z',
+        #                lastUpdateTimestamp: '2024-06-06T01:11:16.045Z'
+        #              },
+        #              type: 'CANCEL'
+        #            }
+        #          ]
+        #        },
+        #        serverTime: '2024-06-06T01:12:44.814Z'
+        #    }
+        #
+        cancelStatus = self.safe_dict(response, 'cancelStatus')
+        orderEvents = self.safe_list(cancelStatus, 'orderEvents', [])
+        orders = []
+        for i in range(0, len(orderEvents)):
+            orderEvent = self.safe_dict(orderEvents, 0)
+            order = self.safe_dict(orderEvent, 'order', {})
+            orders.append(order)
+        return self.parse_orders(orders)
 
     async def cancel_all_orders_after(self, timeout: Int, params={}):
         """
@@ -1396,7 +1439,7 @@ class krakenfutures(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         # LIMIT
         #
@@ -1549,6 +1592,22 @@ class krakenfutures(Exchange, ImplicitAPI):
         #                "type": "CANCEL"
         #            }
         #        ]
+        #    }
+        #
+        # cancelAllOrders
+        #
+        #    {
+        #        "orderId": "85c40002-3f20-4e87-9302-262626c3531b",
+        #        "cliOrdId": null,
+        #        "type": "lmt",
+        #        "symbol": "pi_xbtusd",
+        #        "side": "buy",
+        #        "quantity": 1000,
+        #        "filled": 0,
+        #        "limitPrice": 10144,
+        #        "stopPrice": null,
+        #        "reduceOnly": False,
+        #        "timestamp": "2019-08-01T15:26:27.790Z"
         #    }
         #
         # FETCH OPEN ORDERS
@@ -1704,7 +1763,7 @@ class krakenfutures(Exchange, ImplicitAPI):
             'type': self.parse_order_type(type),
             'timeInForce': timeInForce,
             'postOnly': type == 'post',
-            'reduceOnly': self.safe_value(details, 'reduceOnly'),
+            'reduceOnly': self.safe_bool_2(details, 'reduceOnly', 'reduce_only'),
             'side': self.safe_string(details, 'side'),
             'price': price,
             'stopPrice': self.safe_string(details, 'triggerPrice'),
@@ -2135,7 +2194,7 @@ class krakenfutures(Exchange, ImplicitAPI):
             result.append(position)
         return result
 
-    def parse_position(self, position, market: Market = None):
+    def parse_position(self, position: dict, market: Market = None):
         # cross
         #    {
         #        "side": "long",
@@ -2189,7 +2248,7 @@ class krakenfutures(Exchange, ImplicitAPI):
             'percentage': None,
         }
 
-    async def fetch_leverage_tiers(self, symbols: Strings = None, params={}):
+    async def fetch_leverage_tiers(self, symbols: Strings = None, params={}) -> LeverageTiers:
         """
         :see: https://docs.futures.kraken.com/#http-api-trading-v3-api-instrument-details-get-instruments
         retrieve information on the maximum leverage, and maintenance margin for trades of varying trade sizes
@@ -2246,7 +2305,7 @@ class krakenfutures(Exchange, ImplicitAPI):
         data = self.safe_list(response, 'instruments')
         return self.parse_leverage_tiers(data, symbols, 'symbol')
 
-    def parse_market_leverage_tiers(self, info, market: Market = None):
+    def parse_market_leverage_tiers(self, info, market: Market = None) -> List[LeverageTier]:
         """
          * @ignore
          * @param info Exchange market response for 1 market
@@ -2428,7 +2487,7 @@ class krakenfutures(Exchange, ImplicitAPI):
         #
         return await self.privatePutLeveragepreferences(self.extend(request, params))
 
-    async def fetch_leverages(self, symbols: List[str] = None, params={}) -> Leverages:
+    async def fetch_leverages(self, symbols: Strings = None, params={}) -> Leverages:
         """
         fetch the set leverage for all contract and margin markets
         :see: https://docs.futures.kraken.com/#http-api-trading-v3-api-multi-collateral-get-the-leverage-setting-for-a-market
@@ -2491,7 +2550,7 @@ class krakenfutures(Exchange, ImplicitAPI):
             'shortLeverage': leverageValue,
         }
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None
         if code == 429:

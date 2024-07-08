@@ -6,7 +6,7 @@ import { ExchangeError, InvalidOrder, OrderNotFound, RateLimitExceeded, Insuffic
 import { Precise } from './base/Precise.js';
 import { TICK_SIZE } from './base/functions/number.js';
 import { sha256 } from './static_dependencies/noble-hashes/sha256.js';
-import type { Balances, Currency, Dict, Int, Market, Num, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TradingFeeInterface, Transaction } from './base/types.js';
+import type { Balances, Currency, Dict, Int, Market, Num, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TradingFeeInterface, Transaction, int } from './base/types.js';
 
 //  ---------------------------------------------------------------------------
 
@@ -20,7 +20,7 @@ export default class coinmate extends Exchange {
             'id': 'coinmate',
             'name': 'CoinMate',
             'countries': [ 'GB', 'CZ', 'EU' ], // UK, Czech Republic
-            'rateLimit': 1000,
+            'rateLimit': 600,
             'has': {
                 'CORS': true,
                 'spot': true,
@@ -169,28 +169,28 @@ export default class coinmate extends Exchange {
                 'trading': {
                     'tierBased': true,
                     'percentage': true,
-                    'maker': this.parseNumber ('0.0012'),
-                    'taker': this.parseNumber ('0.0025'),
+                    'taker': this.parseNumber ('0.006'),
+                    'maker': this.parseNumber ('0.004'),
                     'tiers': {
                         'taker': [
-                            [ this.parseNumber ('0'), this.parseNumber ('0.0035') ],
-                            [ this.parseNumber ('10000'), this.parseNumber ('0.0023') ],
-                            [ this.parseNumber ('100000'), this.parseNumber ('0.0021') ],
-                            [ this.parseNumber ('250000'), this.parseNumber ('0.0020') ],
-                            [ this.parseNumber ('500000'), this.parseNumber ('0.0015') ],
-                            [ this.parseNumber ('1000000'), this.parseNumber ('0.0013') ],
-                            [ this.parseNumber ('3000000'), this.parseNumber ('0.0010') ],
-                            [ this.parseNumber ('15000000'), this.parseNumber ('0.0005') ],
+                            [ this.parseNumber ('0'), this.parseNumber ('0.006') ],
+                            [ this.parseNumber ('10000'), this.parseNumber ('0.003') ],
+                            [ this.parseNumber ('100000'), this.parseNumber ('0.0023') ],
+                            [ this.parseNumber ('250000'), this.parseNumber ('0.0021') ],
+                            [ this.parseNumber ('500000'), this.parseNumber ('0.0018') ],
+                            [ this.parseNumber ('1000000'), this.parseNumber ('0.0015') ],
+                            [ this.parseNumber ('3000000'), this.parseNumber ('0.0012') ],
+                            [ this.parseNumber ('15000000'), this.parseNumber ('0.001') ],
                         ],
                         'maker': [
-                            [ this.parseNumber ('0'), this.parseNumber ('0.003') ],
-                            [ this.parseNumber ('10000'), this.parseNumber ('0.0011') ],
-                            [ this.parseNumber ('100000'), this.parseNumber ('0.0010') ],
-                            [ this.parseNumber ('250000'), this.parseNumber ('0.0008') ],
+                            [ this.parseNumber ('0'), this.parseNumber ('0.004') ],
+                            [ this.parseNumber ('10000'), this.parseNumber ('0.002') ],
+                            [ this.parseNumber ('100000'), this.parseNumber ('0.0012') ],
+                            [ this.parseNumber ('250000'), this.parseNumber ('0.0009') ],
                             [ this.parseNumber ('500000'), this.parseNumber ('0.0005') ],
                             [ this.parseNumber ('1000000'), this.parseNumber ('0.0003') ],
                             [ this.parseNumber ('3000000'), this.parseNumber ('0.0002') ],
-                            [ this.parseNumber ('15000000'), this.parseNumber ('0') ],
+                            [ this.parseNumber ('15000000'), this.parseNumber ('-0.0004') ],
                         ],
                     },
                 },
@@ -525,7 +525,7 @@ export default class coinmate extends Exchange {
         return this.parseTransactions (items, undefined, since, limit);
     }
 
-    parseTransactionStatus (status) {
+    parseTransactionStatus (status: Str) {
         const statuses: Dict = {
             'COMPLETED': 'ok',
             'WAITING': 'pending',
@@ -538,7 +538,7 @@ export default class coinmate extends Exchange {
         return this.safeString (statuses, status, status);
     }
 
-    parseTransaction (transaction, currency: Currency = undefined): Transaction {
+    parseTransaction (transaction: Dict, currency: Currency = undefined): Transaction {
         //
         // deposits
         //
@@ -701,7 +701,7 @@ export default class coinmate extends Exchange {
         return this.parseTrades (data, undefined, since, limit);
     }
 
-    parseTrade (trade, market: Market = undefined): Trade {
+    parseTrade (trade: Dict, market: Market = undefined): Trade {
         //
         // fetchMyTrades (private)
         //
@@ -905,7 +905,7 @@ export default class coinmate extends Exchange {
         return this.safeString (types, type, type);
     }
 
-    parseOrder (order, market: Market = undefined): Order {
+    parseOrder (order: Dict, market: Market = undefined): Order {
         //
         // limit sell
         //
@@ -947,6 +947,13 @@ export default class coinmate extends Exchange {
         //         "avgPrice": null,
         //         "trailing": false,
         //     }
+        //
+        // cancelOrder
+        //
+        //    {
+        //        "success": true,
+        //        "remainingAmount": 0.1
+        //    }
         //
         const id = this.safeString (order, 'id');
         const timestamp = this.safeInteger (order, 'timestamp');
@@ -1000,7 +1007,7 @@ export default class coinmate extends Exchange {
          * @param {string} type 'market' or 'limit'
          * @param {string} side 'buy' or 'sell'
          * @param {float} amount how much of currency you want to trade in units of base currency
-         * @param {float} [price] the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+         * @param {float} [price] the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
          * @param {object} [params] extra parameters specific to the exchange API endpoint
          * @returns {object} an [order structure]{@link https://docs.ccxt.com/#/?id=order-structure}
          */
@@ -1068,9 +1075,18 @@ export default class coinmate extends Exchange {
         //   {"error":false,"errorMessage":null,"data":{"success":true,"remainingAmount":0.01}}
         const request: Dict = { 'orderId': id };
         const response = await this.privatePostCancelOrderWithInfo (this.extend (request, params));
-        return {
-            'info': response,
-        };
+        //
+        //    {
+        //        "error": false,
+        //        "errorMessage": null,
+        //        "data": {
+        //          "success": true,
+        //          "remainingAmount": 0.1
+        //        }
+        //    }
+        //
+        const data = this.safeDict (response, 'data');
+        return this.parseOrder (data);
     }
 
     nonce () {
@@ -1101,27 +1117,20 @@ export default class coinmate extends Exchange {
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }
 
-    handleErrors (code, reason, url, method, headers, body, response, requestHeaders, requestBody) {
-        if (response !== undefined) {
-            if ('error' in response) {
-                // {"error":true,"errorMessage":"Minimum Order Size 0.01 ETH","data":null}
-                if (response['error']) {
-                    const message = this.safeString (response, 'errorMessage');
-                    const feedback = this.id + ' ' + message;
-                    this.throwExactlyMatchedException (this.exceptions['exact'], message, feedback);
-                    this.throwBroadlyMatchedException (this.exceptions['broad'], message, feedback);
-                    throw new ExchangeError (this.id + ' ' + this.json (response));
-                }
-            }
+    handleErrors (code: int, reason: string, url: string, method: string, headers: Dict, body: string, response, requestHeaders, requestBody) {
+        if (response === undefined) {
+            return undefined; // fallback to default error handler
         }
-        if (code > 400) {
-            if (body) {
-                const feedback = this.id + ' ' + body;
-                this.throwExactlyMatchedException (this.exceptions['exact'], body, feedback);
-                this.throwBroadlyMatchedException (this.exceptions['broad'], body, feedback);
-                throw new ExchangeError (feedback); // unknown message
-            }
-            throw new ExchangeError (this.id + ' ' + body);
+        //
+        //     {"error":true,"errorMessage":"Api internal error","data":null}
+        //     {"error":true,"errorMessage":"Access denied.","data":null}
+        //
+        const errorMessage = this.safeString (response, 'errorMessage');
+        if (errorMessage !== undefined) {
+            const feedback = this.id + ' ' + body;
+            this.throwExactlyMatchedException (this.exceptions['exact'], errorMessage, feedback);
+            this.throwBroadlyMatchedException (this.exceptions['broad'], errorMessage, feedback);
+            throw new ExchangeError (feedback); // unknown message
         }
         return undefined;
     }

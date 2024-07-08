@@ -183,6 +183,10 @@ class zonda(Exchange, ImplicitAPI):
                         'balances/BITBAY/balance',
                         'fiat_cantor/rate/{baseId}/{quoteId}',
                         'fiat_cantor/history',
+                        'client_payments/v2/customer/crypto/{currency}/channels/deposit',
+                        'client_payments/v2/customer/crypto/{currency}/channels/withdrawal',
+                        'client_payments/v2/customer/crypto/deposit/fee',
+                        'client_payments/v2/customer/crypto/withdrawal/fee',
                     ],
                     'post': [
                         'trading/offer/{symbol}',
@@ -193,6 +197,8 @@ class zonda(Exchange, ImplicitAPI):
                         'fiat_cantor/exchange',
                         'api_payments/withdrawals/crypto',
                         'api_payments/withdrawals/fiat',
+                        'client_payments/v2/customer/crypto/deposit',
+                        'client_payments/v2/customer/crypto/withdrawal',
                     ],
                     'delete': [
                         'trading/offer/{symbol}/{id}/{side}/{price}',
@@ -424,7 +430,7 @@ class zonda(Exchange, ImplicitAPI):
         items = self.safe_list(response, 'items', [])
         return self.parse_orders(items, None, since, limit, {'status': 'open'})
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         #     {
         #         "market": "ETH-EUR",
@@ -442,6 +448,13 @@ class zonda(Exchange, ImplicitAPI):
         #         "firstBalanceId": "5b816c3e-437c-4e43-9bef-47814ae7ebfc",
         #         "secondBalanceId": "ab43023b-4079-414c-b340-056e3430a3af"
         #     }
+        #
+        # cancelOrder
+        #
+        #    {
+        #        status: "Ok",
+        #        errors: []
+        #    }
         #
         marketId = self.safe_string(order, 'market')
         symbol = self.safe_symbol(marketId, market, '-')
@@ -817,7 +830,7 @@ class zonda(Exchange, ImplicitAPI):
         items = response['items']
         return self.parse_ledger(items, None, since, limit)
 
-    def parse_ledger_entry(self, item, currency: Currency = None):
+    def parse_ledger_entry(self, item: dict, currency: Currency = None):
         #
         #    FUNDS_MIGRATION
         #    {
@@ -1205,7 +1218,7 @@ class zonda(Exchange, ImplicitAPI):
         items = self.safe_list(response, 'items', [])
         return self.parse_ohlcvs(items, market, timeframe, since, limit)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # createOrder trades
         #
@@ -1310,7 +1323,7 @@ class zonda(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
         """
@@ -1449,9 +1462,10 @@ class zonda(Exchange, ImplicitAPI):
             'side': side,
             'price': price,
         }
+        response = await self.v1_01PrivateDeleteTradingOfferSymbolIdSidePrice(self.extend(request, params))
         # {status: "Fail", errors: ["NOT_RECOGNIZED_OFFER_TYPE"]}  -- if required params are missing
         # {status: "Ok", errors: []}
-        return await self.v1_01PrivateDeleteTradingOfferSymbolIdSidePrice(self.extend(request, params))
+        return self.parse_order(response)
 
     def is_fiat(self, currency):
         fiatCurrencies: dict = {
@@ -1514,7 +1528,7 @@ class zonda(Exchange, ImplicitAPI):
         first = self.safe_dict(data, 0)
         return self.parse_deposit_address(first, currency)
 
-    async def fetch_deposit_addresses(self, codes: List[str] = None, params={}):
+    async def fetch_deposit_addresses(self, codes: Strings = None, params={}):
         """
         :see: https://docs.zondacrypto.exchange/reference/deposit-addresses-for-crypto
         fetch deposit addresses for multiple currencies and chain types
@@ -1689,7 +1703,7 @@ class zonda(Exchange, ImplicitAPI):
         data = self.safe_dict(response, 'data')
         return self.parse_transaction(data, currency)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # withdraw
         #
@@ -1766,7 +1780,7 @@ class zonda(Exchange, ImplicitAPI):
             }
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, httpCode: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None  # fallback to default error handler
         if 'code' in response:

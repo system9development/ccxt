@@ -678,7 +678,7 @@ class alpaca(Exchange, ImplicitAPI):
         :param str type: 'market', 'limit' or 'stop_limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param float [params.triggerPrice]: The price at which a trigger order is triggered at
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
@@ -772,7 +772,7 @@ class alpaca(Exchange, ImplicitAPI):
         #       "message": "order is not found."
         #   }
         #
-        return self.safe_value(response, 'message', {})
+        return self.parse_order(response)
 
     def cancel_all_orders(self, symbol: Str = None, params={}):
         """
@@ -787,7 +787,11 @@ class alpaca(Exchange, ImplicitAPI):
         if isinstance(response, list):
             return self.parse_orders(response, None)
         else:
-            return response
+            return [
+                self.safe_order({
+                    'info': response,
+                }),
+            ]
 
     def fetch_order(self, id: str, symbol: Str = None, params={}):
         """
@@ -908,7 +912,7 @@ class alpaca(Exchange, ImplicitAPI):
         }
         return self.fetch_orders(symbol, since, limit, self.extend(request, params))
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         #    {
         #        "id":"6ecfcc34-4bed-4b53-83ba-c564aa832a81",
@@ -1002,13 +1006,13 @@ class alpaca(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_time_in_force(self, timeInForce):
+    def parse_time_in_force(self, timeInForce: Str):
         timeInForces: dict = {
             'day': 'Day',
         }
         return self.safe_string(timeInForces, timeInForce, timeInForce)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         #   {
         #       "t":"2022-06-14T05:00:00.027869Z",
@@ -1064,7 +1068,7 @@ class alpaca(Exchange, ImplicitAPI):
         url = url + endpoint
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None  # default error handler
         # {

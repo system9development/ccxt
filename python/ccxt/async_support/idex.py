@@ -35,6 +35,7 @@ class idex(Exchange, ImplicitAPI):
             'rateLimit': 1000,
             'version': 'v3',
             'pro': True,
+            'dex': True,
             'certified': False,
             'requiresWeb3': True,
             'has': {
@@ -537,7 +538,7 @@ class idex(Exchange, ImplicitAPI):
         response = await self.publicGetTrades(self.extend(request, params))
         return self.parse_trades(response, market, since, limit)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # public trades
         #  {
@@ -1009,7 +1010,7 @@ class idex(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         #     {
         #         "market": "DIL-ETH",
@@ -1116,7 +1117,7 @@ class idex(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param bool [params.test]: set to True to test an order, no order will be created but the request will be validated
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
@@ -1416,7 +1417,7 @@ class idex(Exchange, ImplicitAPI):
         canceledOrder = self.safe_dict(response, 0)
         return self.parse_order(canceledOrder, market)
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         errorCode = self.safe_string(response, 'code')
         message = self.safe_string(response, 'message')
         if errorCode is not None:
@@ -1557,13 +1558,13 @@ class idex(Exchange, ImplicitAPI):
             raise NotSupported(self.id + ' fetchTransactionsHelper() not support self method')
         return self.parse_transactions(response, currency, since, limit)
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         statuses: dict = {
             'mined': 'ok',
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # fetchDeposits
         #

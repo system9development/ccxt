@@ -1277,7 +1277,7 @@ class delta(Exchange, ImplicitAPI):
         result = self.safe_dict(response, 'result', {})
         return self.parse_order_book(result, market['symbol'], None, 'buy', 'sell', 'price', 'size')
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # public fetchTrades
         #
@@ -1582,7 +1582,7 @@ class delta(Exchange, ImplicitAPI):
         result = self.safe_list(response, 'result', [])
         return self.parse_positions(result, symbols)
 
-    def parse_position(self, position, market: Market = None):
+    def parse_position(self, position: dict, market: Market = None):
         #
         # fetchPosition
         #
@@ -1658,7 +1658,7 @@ class delta(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         # createOrder, cancelOrder, editOrder, fetchOpenOrders, fetchClosedOrders
         #
@@ -1750,7 +1750,7 @@ class delta(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param bool [params.reduceOnly]: *contract only* indicates if self order is to reduce the size of a position
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
@@ -1828,7 +1828,7 @@ class delta(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of the currency you want to trade in units of the base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
         """
@@ -1946,7 +1946,11 @@ class delta(Exchange, ImplicitAPI):
         #         "success":true
         #     }
         #
-        return response
+        return [
+            self.safe_order({
+                'info': response,
+            }),
+        ]
 
     async def fetch_open_orders(self, symbol: Str = None, since: Int = None, limit: Int = None, params={}) -> List[Order]:
         """
@@ -2164,7 +2168,7 @@ class delta(Exchange, ImplicitAPI):
         }
         return self.safe_string(types, type, type)
 
-    def parse_ledger_entry(self, item, currency: Currency = None):
+    def parse_ledger_entry(self, item: dict, currency: Currency = None):
         #
         #     {
         #         "amount":"29.889184",
@@ -3179,7 +3183,7 @@ class delta(Exchange, ImplicitAPI):
         result = self.safe_dict(response, 'result', {})
         return self.parse_margin_mode(result, market)
 
-    def parse_margin_mode(self, marginMode, market=None) -> MarginMode:
+    def parse_margin_mode(self, marginMode: dict, market=None) -> MarginMode:
         symbol = None
         if market is not None:
             symbol = market['symbol']
@@ -3360,7 +3364,7 @@ class delta(Exchange, ImplicitAPI):
             headers['signature'] = signature
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None
         #

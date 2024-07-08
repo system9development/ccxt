@@ -124,7 +124,7 @@ class htx(ccxt.async_support.htx):
                         '2002': AuthenticationError,  # {action: 'sub', code: 2002, ch: 'accounts.update#2', message: 'invalid.auth.state'}
                         '2021': BadRequest,
                         '2001': BadSymbol,  # {action: 'sub', code: 2001, ch: 'orders#2ltcusdt', message: 'invalid.symbol'}
-                        '2011': BadSymbol,  # {op: 'sub', cid: '1649149285', topic: 'orders_cross.hereltc-usdt', 'err-code': 2011, 'err-msg': "Contract doesn't exist.", ts: 1649149287637}
+                        '2011': BadSymbol,  # {op: 'sub', cid: '1649149285', topic: 'orders_cross.ltc-usdt', 'err-code': 2011, 'err-msg': "Contract doesn't exist.", ts: 1649149287637}
                         '2040': BadRequest,  # {op: 'sub', cid: '1649152947', 'err-code': 2040, 'err-msg': 'Missing required parameter.', ts: 1649152948684}
                         '4007': BadRequest,  # {op: 'sub', cid: '1', topic: 'accounts_unify.USDT', 'err-code': 4007, 'err-msg': 'Non - single account user is not available, please check through the cross and isolated account asset interface', ts: 1698419318540}
                     },
@@ -608,19 +608,18 @@ class htx(ccxt.async_support.htx):
         #     }
         #
         messageHash = self.safe_string(message, 'ch')
-        tick = self.safe_value(message, 'tick')
+        tick = self.safe_dict(message, 'tick')
         event = self.safe_string(tick, 'event')
-        ch = self.safe_value(message, 'ch')
+        ch = self.safe_string(message, 'ch')
         parts = ch.split('.')
         marketId = self.safe_string(parts, 1)
         symbol = self.safe_symbol(marketId)
-        orderbook = self.safe_value(self.orderbooks, symbol)
-        if orderbook is None:
+        if not (symbol in self.orderbooks):
             size = self.safe_string(parts, 3)
             sizeParts = size.split('_')
             limit = self.safe_integer(sizeParts, 1)
-            orderbook = self.order_book({}, limit)
-            self.orderbooks[symbol] = orderbook
+            self.orderbooks[symbol] = self.order_book({}, limit)
+        orderbook = self.orderbooks[symbol]
         if (event is None) and (orderbook['nonce'] is None):
             orderbook.cache.append(message)
         else:

@@ -14,7 +14,6 @@ from ccxt.base.errors import PermissionDenied
 from ccxt.base.errors import ArgumentsRequired
 from ccxt.base.errors import BadRequest
 from ccxt.base.errors import BadSymbol
-from ccxt.base.errors import BadResponse
 from ccxt.base.errors import InsufficientFunds
 from ccxt.base.errors import InvalidAddress
 from ccxt.base.errors import InvalidOrder
@@ -24,6 +23,7 @@ from ccxt.base.errors import DuplicateOrderId
 from ccxt.base.errors import NotSupported
 from ccxt.base.errors import RateLimitExceeded
 from ccxt.base.errors import ExchangeNotAvailable
+from ccxt.base.errors import BadResponse
 from ccxt.base.decimal_to_precision import TICK_SIZE
 from ccxt.base.precise import Precise
 
@@ -927,7 +927,7 @@ class coinsph(Exchange, ImplicitAPI):
         }
         return self.fetch_my_trades(symbol, since, limit, self.extend(request, params))
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # fetchTrades
         #     {
@@ -1066,7 +1066,7 @@ class coinsph(Exchange, ImplicitAPI):
         :param str type: 'market', 'limit', 'stop_loss', 'take_profit', 'stop_loss_limit', 'take_profit_limit' or 'limit_maker'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param float [params.cost]: the quote quantity that can be used alternative for the amount for market buy orders
         :param bool [params.test]: set to True to test an order, no order will be created but the request will be validated
@@ -1266,7 +1266,7 @@ class coinsph(Exchange, ImplicitAPI):
         response = self.privateDeleteOpenapiV1OpenOrders(self.extend(request, params))
         return self.parse_orders(response, market)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         # createOrder POST /openapi/v1/order
         #     {
@@ -1481,7 +1481,7 @@ class coinsph(Exchange, ImplicitAPI):
             result[symbol] = fee
         return result
 
-    def parse_trading_fee(self, fee, market: Market = None) -> TradingFeeInterface:
+    def parse_trading_fee(self, fee: dict, market: Market = None) -> TradingFeeInterface:
         #
         #     {
         #         "symbol": "ETHUSDT",
@@ -1644,7 +1644,7 @@ class coinsph(Exchange, ImplicitAPI):
         #
         return self.parse_transactions(response, currency, since, limit)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # fetchDeposits
         #     {
@@ -1731,7 +1731,7 @@ class coinsph(Exchange, ImplicitAPI):
             'fee': fee,
         }
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         statuses: dict = {
             '0': 'pending',
             '1': 'ok',
@@ -1838,7 +1838,7 @@ class coinsph(Exchange, ImplicitAPI):
                 url += '?' + query
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None
         responseCode = self.safe_string(response, 'code', None)

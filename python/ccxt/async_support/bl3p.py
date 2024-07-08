@@ -251,7 +251,7 @@ class bl3p(Exchange, ImplicitAPI):
         #
         return self.parse_ticker(ticker, market)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # fetchTrades
         #
@@ -375,7 +375,7 @@ class bl3p(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
          *
          * EXCHANGE SPECIFIC PARAMETERS
@@ -413,7 +413,13 @@ class bl3p(Exchange, ImplicitAPI):
         request: dict = {
             'order_id': id,
         }
-        return await self.privatePostMarketMoneyOrderCancel(self.extend(request, params))
+        response = await self.privatePostMarketMoneyOrderCancel(self.extend(request, params))
+        #
+        # "success"
+        #
+        return self.safe_order({
+            'info': response,
+        })
 
     async def create_deposit_address(self, code: str, params={}):
         """

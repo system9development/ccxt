@@ -115,7 +115,7 @@ export default class htx extends htxRest {
                         '2002': AuthenticationError, // { action: 'sub', code: 2002, ch: 'accounts.update#2', message: 'invalid.auth.state' }
                         '2021': BadRequest,
                         '2001': BadSymbol, // { action: 'sub', code: 2001, ch: 'orders#2ltcusdt', message: 'invalid.symbol'}
-                        '2011': BadSymbol, // { op: 'sub', cid: '1649149285', topic: 'orders_cross.hereltc-usdt', 'err-code': 2011, 'err-msg': "Contract doesn't exist.", ts: 1649149287637 }
+                        '2011': BadSymbol, // { op: 'sub', cid: '1649149285', topic: 'orders_cross.ltc-usdt', 'err-code': 2011, 'err-msg': "Contract doesn't exist.", ts: 1649149287637 }
                         '2040': BadRequest, // { op: 'sub', cid: '1649152947', 'err-code': 2040, 'err-msg': 'Missing required parameter.', ts: 1649152948684 }
                         '4007': BadRequest, // { op: 'sub', cid: '1', topic: 'accounts_unify.USDT', 'err-code': 4007, 'err-msg': 'Non - single account user is not available, please check through the cross and isolated account asset interface', ts: 1698419318540 }
                     },
@@ -641,20 +641,19 @@ export default class htx extends htxRest {
         //     }
         //
         const messageHash = this.safeString (message, 'ch');
-        const tick = this.safeValue (message, 'tick');
+        const tick = this.safeDict (message, 'tick');
         const event = this.safeString (tick, 'event');
-        const ch = this.safeValue (message, 'ch');
+        const ch = this.safeString (message, 'ch');
         const parts = ch.split ('.');
         const marketId = this.safeString (parts, 1);
         const symbol = this.safeSymbol (marketId);
-        let orderbook = this.safeValue (this.orderbooks, symbol);
-        if (orderbook === undefined) {
+        if (!(symbol in this.orderbooks)) {
             const size = this.safeString (parts, 3);
             const sizeParts = size.split ('_');
             const limit = this.safeInteger (sizeParts, 1);
-            orderbook = this.orderBook ({}, limit);
-            this.orderbooks[symbol] = orderbook;
+            this.orderbooks[symbol] = this.orderBook ({}, limit);
         }
+        const orderbook = this.orderbooks[symbol];
         if ((event === undefined) && (orderbook['nonce'] === undefined)) {
             orderbook.cache.push (message);
         } else {

@@ -6,7 +6,7 @@ import { ExchangeError, AuthenticationError, InsufficientFunds, PermissionDenied
 import { TICK_SIZE } from './base/functions/number.js';
 import { jwt } from './base/functions/rsa.js';
 import { sha256 } from './static_dependencies/noble-hashes/sha256.js';
-import type { TransferEntry, Balances, Bool, Currency, Int, Market, OHLCV, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, Transaction, Num, Currencies, Dict } from './base/types.js';
+import type { TransferEntry, Balances, Bool, Currency, Int, Market, OHLCV, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, Transaction, Num, Currencies, Dict, int } from './base/types.js';
 import { Precise } from './base/Precise.js';
 
 //  ---------------------------------------------------------------------------
@@ -22,7 +22,7 @@ export default class bigone extends Exchange {
             'name': 'BigONE',
             'countries': [ 'CN' ],
             'version': 'v3',
-            'rateLimit': 1200, // 500 request per 10 minutes
+            'rateLimit': 20, // 500 requests per 10 seconds
             'has': {
                 'CORS': undefined,
                 'spot': true,
@@ -1036,7 +1036,7 @@ export default class bigone extends Exchange {
         } as any;
     }
 
-    parseTrade (trade, market: Market = undefined): Trade {
+    parseTrade (trade: Dict, market: Market = undefined): Trade {
         //
         // fetchTrades (public)
         //
@@ -1359,7 +1359,7 @@ export default class bigone extends Exchange {
         return this.safeString (types, type, type);
     }
 
-    parseOrder (order, market: Market = undefined): Order {
+    parseOrder (order: Dict, market: Market = undefined): Order {
         //
         //    {
         //        "id": "42154072251",
@@ -1465,7 +1465,7 @@ export default class bigone extends Exchange {
          * @param {string} type 'market' or 'limit'
          * @param {string} side 'buy' or 'sell'
          * @param {float} amount how much of currency you want to trade in units of base currency
-         * @param {float} [price] the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+         * @param {float} [price] the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
          * @param {object} [params] extra parameters specific to the exchange API endpoint
          * @param {float} [params.triggerPrice] the price at which a trigger order is triggered at
          * @param {bool} [params.postOnly] if true, the order will only be posted to the order book and not executed immediately
@@ -1623,7 +1623,27 @@ export default class bigone extends Exchange {
         //         }
         //     }
         //
-        return response;
+        const data = this.safeDict (response, 'data', {});
+        const cancelled = this.safeList (data, 'cancelled', []);
+        const failed = this.safeList (data, 'failed', []);
+        const result = [];
+        for (let i = 0; i < cancelled.length; i++) {
+            const orderId = cancelled[i];
+            result.push (this.safeOrder ({
+                'info': orderId,
+                'id': orderId,
+                'status': 'canceled',
+            }));
+        }
+        for (let i = 0; i < failed.length; i++) {
+            const orderId = failed[i];
+            result.push (this.safeOrder ({
+                'info': orderId,
+                'id': orderId,
+                'status': 'failed',
+            }));
+        }
+        return result;
     }
 
     async fetchOrder (id: string, symbol: Str = undefined, params = {}) {
@@ -1895,7 +1915,7 @@ export default class bigone extends Exchange {
         };
     }
 
-    parseTransactionStatus (status) {
+    parseTransactionStatus (status: Str) {
         const statuses: Dict = {
             // what are other statuses here?
             'WITHHOLD': 'ok', // deposits
@@ -1907,7 +1927,7 @@ export default class bigone extends Exchange {
         return this.safeString (statuses, status, status);
     }
 
-    parseTransaction (transaction, currency: Currency = undefined): Transaction {
+    parseTransaction (transaction: Dict, currency: Currency = undefined): Transaction {
         //
         // fetchDeposits
         //
@@ -2232,7 +2252,7 @@ export default class bigone extends Exchange {
         return this.parseTransaction (data, currency);
     }
 
-    handleErrors (httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody) {
+    handleErrors (httpCode: int, reason: string, url: string, method: string, headers: Dict, body: string, response, requestHeaders, requestBody) {
         if (response === undefined) {
             return undefined; // fallback to default error handler
         }

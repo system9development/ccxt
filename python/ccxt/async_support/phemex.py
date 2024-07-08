@@ -7,7 +7,7 @@ from ccxt.async_support.base.exchange import Exchange
 from ccxt.abstract.phemex import ImplicitAPI
 import hashlib
 import numbers
-from ccxt.base.types import Balances, Currencies, Currency, Int, MarginModification, Market, Num, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, Transaction, TransferEntry, TransferEntries
+from ccxt.base.types import Balances, Currencies, Currency, Int, LeverageTier, LeverageTiers, MarginModification, Market, Num, Order, OrderBook, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, Transaction, TransferEntry, TransferEntries
 from typing import List
 from ccxt.base.errors import ExchangeError
 from ccxt.base.errors import AuthenticationError
@@ -19,11 +19,10 @@ from ccxt.base.errors import BadSymbol
 from ccxt.base.errors import InsufficientFunds
 from ccxt.base.errors import InvalidOrder
 from ccxt.base.errors import OrderNotFound
-from ccxt.base.errors import CancelPending
 from ccxt.base.errors import DuplicateOrderId
-from ccxt.base.errors import NotSupported
 from ccxt.base.errors import DDoSProtection
 from ccxt.base.errors import RateLimitExceeded
+from ccxt.base.errors import CancelPending
 from ccxt.base.decimal_to_precision import TICK_SIZE
 from ccxt.base.precise import Precise
 
@@ -512,7 +511,7 @@ class phemex(Exchange, ImplicitAPI):
         parts = value.split(' ')
         return self.safe_number(parts, 0)
 
-    def parse_swap_market(self, market):
+    def parse_swap_market(self, market: dict):
         #
         #     {
         #         "symbol":"BTCUSD",
@@ -647,7 +646,7 @@ class phemex(Exchange, ImplicitAPI):
             'info': market,
         })
 
-    def parse_spot_market(self, market):
+    def parse_spot_market(self, market: dict):
         #
         #     {
         #         "symbol":"sBTCUSDT",
@@ -1497,7 +1496,7 @@ class phemex(Exchange, ImplicitAPI):
         trades = self.safe_value_2(result, 'trades', 'trades_p', [])
         return self.parse_trades(trades, market, since, limit)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # fetchTrades(public) spot & contract
         #
@@ -2080,7 +2079,7 @@ class phemex(Exchange, ImplicitAPI):
         }
         return self.safe_string(types, type, type)
 
-    def parse_time_in_force(self, timeInForce):
+    def parse_time_in_force(self, timeInForce: Str):
         timeInForces: dict = {
             'GoodTillCancel': 'GTC',
             'PostOnly': 'PO',
@@ -2089,7 +2088,7 @@ class phemex(Exchange, ImplicitAPI):
         }
         return self.safe_string(timeInForces, timeInForce, timeInForce)
 
-    def parse_spot_order(self, order, market: Market = None):
+    def parse_spot_order(self, order: dict, market: Market = None):
         #
         # spot
         #
@@ -2380,7 +2379,7 @@ class phemex(Exchange, ImplicitAPI):
             'trades': None,
         })
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         isSwap = self.safe_bool(market, 'swap', False)
         hasPnl = ('closedPnl' in order) or ('closedPnlRv' in order) or ('totalPnlRv' in order)
         if isSwap or hasPnl:
@@ -2396,7 +2395,7 @@ class phemex(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param float [params.trigger]: trigger price for conditional orders
         :param dict [params.takeProfit]: *swap only* *takeProfit object in params* containing the triggerPrice at which the attached take profit order will be triggered(perpetual swap markets only)
@@ -2652,7 +2651,7 @@ class phemex(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the base currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param str [params.posSide]: either 'Merged' or 'Long' or 'Short'
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
@@ -2764,14 +2763,42 @@ class phemex(Exchange, ImplicitAPI):
         response = None
         if market['settle'] == 'USDT':
             response = await self.privateDeleteGOrdersAll(self.extend(request, params))
+            #
+            #    {
+            #        code: '0',
+            #        msg: '',
+            #        data: '1'
+            #    }
+            #
         elif market['swap']:
             response = await self.privateDeleteOrdersAll(self.extend(request, params))
+            #
+            #    {
+            #        code: '0',
+            #        msg: '',
+            #        data: '1'
+            #    }
+            #
         else:
             response = await self.privateDeleteSpotOrdersAll(self.extend(request, params))
-        return response
+            #
+            #    {
+            #        code: '0',
+            #        msg: '',
+            #        data: {
+            #            total: '1'
+            #        }
+            #    }
+            #
+        return [
+            self.safe_order({
+                'info': response,
+            }),
+        ]
 
     async def fetch_order(self, id: str, symbol: Str = None, params={}):
         """
+        :see: https://phemex-docs.github.io/#query-orders-by-ids
         fetches information on an order made by the user
         :param str symbol: unified symbol of the market the order was made in
         :param dict [params]: extra parameters specific to the exchange API endpoint
@@ -2781,8 +2808,6 @@ class phemex(Exchange, ImplicitAPI):
             raise ArgumentsRequired(self.id + ' fetchOrder() requires a symbol argument')
         await self.load_markets()
         market = self.market(symbol)
-        if market['settle'] == 'USDT':
-            raise NotSupported(self.id + 'fetchOrder() is not supported yet for USDT settled swap markets')  # https://github.com/phemex/phemex-api-docs/blob/master/Public-Hedged-Perpetual-API.md#query-user-order-by-orderid-or-query-user-order-by-client-order-id
         request: dict = {
             'symbol': market['id'],
         }
@@ -2793,7 +2818,9 @@ class phemex(Exchange, ImplicitAPI):
         else:
             request['orderID'] = id
         response = None
-        if market['spot']:
+        if market['settle'] == 'USDT':
+            response = await self.privateGetApiDataGFuturesOrdersByOrderId(self.extend(request, params))
+        elif market['spot']:
             response = await self.privateGetSpotOrdersActive(self.extend(request, params))
         else:
             response = await self.privateGetExchangeOrder(self.extend(request, params))
@@ -3225,7 +3252,7 @@ class phemex(Exchange, ImplicitAPI):
         data = self.safe_list(response, 'data', [])
         return self.parse_transactions(data, currency, since, limit)
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         statuses: dict = {
             'Success': 'ok',
             'Succeed': 'ok',
@@ -3245,7 +3272,7 @@ class phemex(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # withdraw
         #
@@ -3490,7 +3517,7 @@ class phemex(Exchange, ImplicitAPI):
             result.append(self.parse_position(position))
         return self.filter_by_array_positions(result, 'symbol', symbols, False)
 
-    def parse_position(self, position, market: Market = None):
+    def parse_position(self, position: dict, market: Market = None):
         #
         #    {
         #        "userID": "811370",
@@ -3924,7 +3951,7 @@ class phemex(Exchange, ImplicitAPI):
             request['targetPosMode'] = 'OneWay'
         return await self.privatePutGPositionsSwitchPosModeSync(self.extend(request, params))
 
-    async def fetch_leverage_tiers(self, symbols: Strings = None, params={}):
+    async def fetch_leverage_tiers(self, symbols: Strings = None, params={}) -> LeverageTiers:
         """
         retrieve information on the maximum leverage, and maintenance margin for trades of varying trade sizes
         :param str[]|None symbols: list of unified market symbols
@@ -4020,7 +4047,7 @@ class phemex(Exchange, ImplicitAPI):
         riskLimits = self.safe_list(data, 'riskLimits')
         return self.parse_leverage_tiers(riskLimits, symbols, 'symbol')
 
-    def parse_market_leverage_tiers(self, info, market: Market = None):
+    def parse_market_leverage_tiers(self, info, market: Market = None) -> List[LeverageTier]:
         """
         :param dict info: Exchange market response for 1 market
         :param dict market: CCXT market
@@ -4453,7 +4480,7 @@ class phemex(Exchange, ImplicitAPI):
         data = self.safe_dict(response, 'data', {})
         return self.parse_transaction(data, currency)
 
-    def handle_errors(self, httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, httpCode: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None  # fallback to default error handler
         #

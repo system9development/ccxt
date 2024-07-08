@@ -241,7 +241,7 @@ class bitso(Exchange, ImplicitAPI):
         }
         return self.safe_string(types, type, type)
 
-    def parse_ledger_entry(self, item, currency: Currency = None):
+    def parse_ledger_entry(self, item: dict, currency: Currency = None):
         #
         #     {
         #         "eid": "2510b3e2bc1c87f584500a18084f35ed",
@@ -700,7 +700,7 @@ class bitso(Exchange, ImplicitAPI):
             self.safe_number(ohlcv, 'volume'),
         ]
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # fetchTrades(public)
         #
@@ -928,7 +928,7 @@ class bitso(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
         """
@@ -962,7 +962,19 @@ class bitso(Exchange, ImplicitAPI):
         request: dict = {
             'oid': id,
         }
-        return self.privateDeleteOrdersOid(self.extend(request, params))
+        response = self.privateDeleteOrdersOid(self.extend(request, params))
+        #
+        #     {
+        #         "success": True,
+        #         "payload": ["yWTQGxDMZ0VimZgZ"]
+        #     }
+        #
+        payload = self.safe_list(response, 'payload', [])
+        orderId = self.safe_string(payload, 0)
+        return self.safe_order({
+            'info': response,
+            'id': orderId,
+        })
 
     def cancel_orders(self, ids, symbol: Str = None, params={}):
         """
@@ -1029,7 +1041,7 @@ class bitso(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         #
         # canceledOrder
@@ -1258,7 +1270,7 @@ class bitso(Exchange, ImplicitAPI):
             'info': response,
         }
 
-    def fetch_transaction_fees(self, codes: List[str] = None, params={}):
+    def fetch_transaction_fees(self, codes: Strings = None, params={}):
         """
          * @deprecated
         please use fetchDepositWithdrawFees instead
@@ -1542,7 +1554,7 @@ class bitso(Exchange, ImplicitAPI):
         }
         return self.safe_string(networksById, networkId, networkId)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # deposit
         #     {
@@ -1611,7 +1623,7 @@ class bitso(Exchange, ImplicitAPI):
             'info': transaction,
         }
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         statuses: dict = {
             'pending': 'pending',
             'in_progress': 'pending',
@@ -1646,7 +1658,7 @@ class bitso(Exchange, ImplicitAPI):
             }
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, httpCode: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None  # fallback to default error handler
         if 'success' in response:

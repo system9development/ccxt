@@ -19,9 +19,9 @@ from ccxt.base.errors import BadSymbol
 from ccxt.base.errors import InsufficientFunds
 from ccxt.base.errors import InvalidOrder
 from ccxt.base.errors import OrderNotFound
-from ccxt.base.errors import CancelPending
 from ccxt.base.errors import RateLimitExceeded
 from ccxt.base.errors import OnMaintenance
+from ccxt.base.errors import CancelPending
 from ccxt.base.decimal_to_precision import TICK_SIZE
 from ccxt.base.precise import Precise
 
@@ -272,7 +272,7 @@ class novadax(Exchange, ImplicitAPI):
         data = self.safe_value(response, 'data', [])
         return self.parse_markets(data)
 
-    def parse_market(self, market) -> Market:
+    def parse_market(self, market: dict) -> Market:
         baseId = self.safe_string(market, 'baseCurrency')
         quoteId = self.safe_string(market, 'quoteCurrency')
         id = self.safe_string(market, 'symbol')
@@ -491,7 +491,7 @@ class novadax(Exchange, ImplicitAPI):
         timestamp = self.safe_integer(data, 'timestamp')
         return self.parse_order_book(data, market['symbol'], timestamp, 'bids', 'asks')
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # public fetchTrades
         #
@@ -727,7 +727,7 @@ class novadax(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much you want to trade in units of the base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param float [params.cost]: for spot market buy orders, the quote quantity that can be used alternative for the amount
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
@@ -1014,7 +1014,7 @@ class novadax(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         # createOrder, fetchOrders, fetchOrder
         #
@@ -1303,7 +1303,7 @@ class novadax(Exchange, ImplicitAPI):
         data = self.safe_list(response, 'data', [])
         return self.parse_transactions(data, currency, since, limit)
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         # Pending the record is wait broadcast to chain
         # x/M confirming the comfirming state of tx, the M is total confirmings needed
         # SUCCESS the record is success full
@@ -1318,7 +1318,7 @@ class novadax(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         # withdraw
         #
@@ -1468,7 +1468,7 @@ class novadax(Exchange, ImplicitAPI):
             headers['X-Nova-Signature'] = self.hmac(self.encode(auth), self.encode(self.secret), hashlib.sha256)
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None
         #

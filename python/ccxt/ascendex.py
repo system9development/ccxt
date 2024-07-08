@@ -6,7 +6,7 @@
 from ccxt.base.exchange import Exchange
 from ccxt.abstract.ascendex import ImplicitAPI
 import hashlib
-from ccxt.base.types import Account, Balances, Currencies, Currency, Int, Leverage, Leverages, MarginMode, MarginModes, MarginModification, Market, Num, Order, OrderBook, OrderRequest, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TradingFees, Transaction, TransferEntry
+from ccxt.base.types import Account, Balances, Currencies, Currency, Int, Leverage, Leverages, LeverageTier, LeverageTiers, MarginMode, MarginModes, MarginModification, Market, Num, Order, OrderBook, OrderRequest, OrderSide, OrderType, Str, Strings, Ticker, Tickers, Trade, TradingFees, Transaction, TransferEntry
 from typing import List
 from ccxt.base.errors import ExchangeError
 from ccxt.base.errors import AuthenticationError
@@ -1143,7 +1143,7 @@ class ascendex(Exchange, ImplicitAPI):
         data = self.safe_list(response, 'data', [])
         return self.parse_ohlcvs(data, market, timeframe, since, limit)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # public fetchTrades
         #
@@ -1224,7 +1224,7 @@ class ascendex(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         # createOrder
         #
@@ -1452,7 +1452,7 @@ class ascendex(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much you want to trade in units of the base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param str [params.timeInForce]: "GTC", "IOC", "FOK", or "PO"
         :param bool [params.postOnly]: True or False
@@ -1525,7 +1525,7 @@ class ascendex(Exchange, ImplicitAPI):
         :param str type: "limit" or "market"
         :param str side: "buy" or "sell"
         :param float amount: the amount of currency to trade
-        :param float [price]: *ignored in "market" orders* the price at which the order is to be fullfilled at in units of the quote currency
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :param str [params.timeInForce]: "GTC", "IOC", "FOK", or "PO"
         :param bool [params.postOnly]: True or False
@@ -2189,7 +2189,7 @@ class ascendex(Exchange, ImplicitAPI):
         :see: https://ascendex.github.io/ascendex-futures-pro-api-v2/#cancel-all-open-orders
         :param str symbol: unified market symbol, only orders in the market of self symbol are cancelled when symbol is not None
         :param dict [params]: extra parameters specific to the exchange API endpoint
-        :returns dict[]: a list of `order structures <https://docs.ccxt.com/#/?id=order-structure>`
+        :returns dict[]: a list with a single `order structure <https://docs.ccxt.com/#/?id=order-structure>` with the response assigned to the info property
         """
         self.load_markets()
         self.load_accounts()
@@ -2250,7 +2250,9 @@ class ascendex(Exchange, ImplicitAPI):
         #         }
         #     }
         #
-        return response
+        return self.safe_order({
+            'info': response,
+        })
 
     def parse_deposit_address(self, depositAddress, currency: Currency = None):
         #
@@ -2440,7 +2442,7 @@ class ascendex(Exchange, ImplicitAPI):
         transactions = self.safe_list(data, 'data', [])
         return self.parse_transactions(transactions, currency, since, limit)
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         statuses: dict = {
             'reviewing': 'pending',
             'pending': 'pending',
@@ -2449,7 +2451,7 @@ class ascendex(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         #     {
         #         "requestId": "wuzd1Ojsqtz4bCA3UXwtUnnJDmU8PiyB",
@@ -2566,7 +2568,7 @@ class ascendex(Exchange, ImplicitAPI):
         symbols = self.market_symbols(symbols)
         return self.filter_by_array_positions(result, 'symbol', symbols, False)
 
-    def parse_position(self, position, market: Market = None):
+    def parse_position(self, position: dict, market: Market = None):
         #
         #     {
         #         "symbol": "BTC-PERP",
@@ -2832,7 +2834,7 @@ class ascendex(Exchange, ImplicitAPI):
             raise BadSymbol(self.id + ' setMarginMode() supports swap contracts only')
         return self.v2PrivateAccountGroupPostFuturesMarginType(self.extend(request, params))
 
-    def fetch_leverage_tiers(self, symbols: Strings = None, params={}):
+    def fetch_leverage_tiers(self, symbols: Strings = None, params={}) -> LeverageTiers:
         """
         retrieve information on the maximum leverage, and maintenance margin for trades of varying trade sizes
         :param str[]|None symbols: list of unified market symbols
@@ -2873,7 +2875,7 @@ class ascendex(Exchange, ImplicitAPI):
         symbols = self.market_symbols(symbols)
         return self.parse_leverage_tiers(data, symbols, 'symbol')
 
-    def parse_market_leverage_tiers(self, info, market: Market = None):
+    def parse_market_leverage_tiers(self, info, market: Market = None) -> List[LeverageTier]:
         """
         :param dict info: Exchange market response for 1 market
         :param dict market: CCXT market
@@ -3116,7 +3118,7 @@ class ascendex(Exchange, ImplicitAPI):
             'amount': self.safe_number(income, 'paymentInUSDT'),
         }
 
-    def fetch_margin_modes(self, symbols: List[str] = None, params={}) -> MarginModes:
+    def fetch_margin_modes(self, symbols: Strings = None, params={}) -> MarginModes:
         """
         fetches the set margin mode of the user
         :see: https://ascendex.github.io/ascendex-futures-pro-api-v2/#position
@@ -3175,7 +3177,7 @@ class ascendex(Exchange, ImplicitAPI):
         marginModes = self.safe_list(data, 'contracts', [])
         return self.parse_margin_modes(marginModes, symbols, 'symbol')
 
-    def parse_margin_mode(self, marginMode, market=None) -> MarginMode:
+    def parse_margin_mode(self, marginMode: dict, market=None) -> MarginMode:
         marketId = self.safe_string(marginMode, 'symbol')
         marginType = self.safe_string(marginMode, 'marginType')
         margin = 'cross' if (marginType == 'crossed') else 'isolated'
@@ -3185,7 +3187,7 @@ class ascendex(Exchange, ImplicitAPI):
             'marginMode': margin,
         }
 
-    def fetch_leverages(self, symbols: List[str] = None, params={}) -> Leverages:
+    def fetch_leverages(self, symbols: Strings = None, params={}) -> Leverages:
         """
         fetch the set leverage for all contract markets
         :see: https://ascendex.github.io/ascendex-futures-pro-api-v2/#position
@@ -3309,7 +3311,7 @@ class ascendex(Exchange, ImplicitAPI):
         url = self.urls['api']['rest'] + url
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, httpCode: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None  # fallback to default error handler
         #

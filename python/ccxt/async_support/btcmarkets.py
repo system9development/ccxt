@@ -14,7 +14,6 @@ from ccxt.base.errors import BadRequest
 from ccxt.base.errors import InsufficientFunds
 from ccxt.base.errors import InvalidOrder
 from ccxt.base.errors import OrderNotFound
-from ccxt.base.errors import DDoSProtection
 from ccxt.base.decimal_to_precision import TICK_SIZE
 from ccxt.base.precise import Precise
 
@@ -161,16 +160,18 @@ class btcmarkets(Exchange, ImplicitAPI):
             },
             'precisionMode': TICK_SIZE,
             'exceptions': {
-                '3': InvalidOrder,
-                '6': DDoSProtection,
-                'InsufficientFund': InsufficientFunds,
-                'InvalidPrice': InvalidOrder,
-                'InvalidAmount': InvalidOrder,
-                'MissingArgument': InvalidOrder,
-                'OrderAlreadyCancelled': InvalidOrder,
-                'OrderNotFound': OrderNotFound,
-                'OrderStatusIsFinal': InvalidOrder,
-                'InvalidPaginationParameter': BadRequest,
+                'exact': {
+                    'InsufficientFund': InsufficientFunds,
+                    'InvalidPrice': InvalidOrder,
+                    'InvalidAmount': InvalidOrder,
+                    'MissingArgument': BadRequest,
+                    'OrderAlreadyCancelled': InvalidOrder,
+                    'OrderNotFound': OrderNotFound,
+                    'OrderStatusIsFinal': InvalidOrder,
+                    'InvalidPaginationParameter': BadRequest,
+                },
+                'broad': {
+                },
             },
             'fees': {
                 'percentage': True,
@@ -237,7 +238,7 @@ class btcmarkets(Exchange, ImplicitAPI):
         """
         return await self.fetch_transactions_with_method('privateGetWithdrawals', code, since, limit, params)
 
-    def parse_transaction_status(self, status):
+    def parse_transaction_status(self, status: Str):
         statuses: dict = {
             'Accepted': 'pending',
             'Pending Authorization': 'pending',
@@ -254,7 +255,7 @@ class btcmarkets(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, type, type)
 
-    def parse_transaction(self, transaction, currency: Currency = None) -> Transaction:
+    def parse_transaction(self, transaction: dict, currency: Currency = None) -> Transaction:
         #
         #    {
         #         "id": "6500230339",
@@ -370,13 +371,14 @@ class btcmarkets(Exchange, ImplicitAPI):
         #             "minOrderAmount":"0.00007",
         #             "maxOrderAmount":"1000000",
         #             "amountDecimals":"8",
-        #             "priceDecimals":"2"
+        #             "priceDecimals":"2",
+        #             "status": "Online"
         #         }
         #     ]
         #
         return self.parse_markets(response)
 
-    def parse_market(self, market) -> Market:
+    def parse_market(self, market: dict) -> Market:
         baseId = self.safe_string(market, 'baseAssetName')
         quoteId = self.safe_string(market, 'quoteAssetName')
         id = self.safe_string(market, 'marketId')
@@ -387,6 +389,7 @@ class btcmarkets(Exchange, ImplicitAPI):
         pricePrecision = self.parse_number(self.parse_precision(self.safe_string(market, 'priceDecimals')))
         minAmount = self.safe_number(market, 'minOrderAmount')
         maxAmount = self.safe_number(market, 'maxOrderAmount')
+        status = self.safe_string(market, 'status')
         minPrice = None
         if quote == 'AUD':
             minPrice = pricePrecision
@@ -405,7 +408,7 @@ class btcmarkets(Exchange, ImplicitAPI):
             'swap': False,
             'future': False,
             'option': False,
-            'active': None,
+            'active': (status == 'Online'),
             'contract': False,
             'linear': None,
             'inverse': None,
@@ -662,7 +665,7 @@ class btcmarkets(Exchange, ImplicitAPI):
         response = await self.publicGetMarketsMarketIdTicker(self.extend(request, params))
         return self.parse_ticker(response, market)
 
-    def parse_trade(self, trade, market: Market = None) -> Trade:
+    def parse_trade(self, trade: dict, market: Market = None) -> Trade:
         #
         # public fetchTrades
         #
@@ -760,7 +763,7 @@ class btcmarkets(Exchange, ImplicitAPI):
         :param str type: 'market' or 'limit'
         :param str side: 'buy' or 'sell'
         :param float amount: how much of currency you want to trade in units of base currency
-        :param float [price]: the price at which the order is to be fullfilled, in units of the quote currency, ignored in market orders
+        :param float [price]: the price at which the order is to be fulfilled, in units of the quote currency, ignored in market orders
         :param dict [params]: extra parameters specific to the exchange API endpoint
         :returns dict: an `order structure <https://docs.ccxt.com/#/?id=order-structure>`
         """
@@ -855,7 +858,29 @@ class btcmarkets(Exchange, ImplicitAPI):
         request: dict = {
             'ids': ids,
         }
-        return await self.privateDeleteBatchordersIds(self.extend(request, params))
+        response = await self.privateDeleteBatchordersIds(self.extend(request, params))
+        #
+        #    {
+        #       "cancelOrders": [
+        #            {
+        #               "orderId": "414186",
+        #               "clientOrderId": "6"
+        #            },
+        #            ...
+        #        ],
+        #        "unprocessedRequests": [
+        #            {
+        #               "code": "OrderAlreadyCancelled",
+        #               "message": "order is already cancelled.",
+        #               "requestId": "1"
+        #            }
+        #        ]
+        #    }
+        #
+        cancelOrders = self.safe_list(response, 'cancelOrders', [])
+        unprocessedRequests = self.safe_list(response, 'unprocessedRequests', [])
+        orders = self.array_concat(cancelOrders, unprocessedRequests)
+        return self.parse_orders(orders)
 
     async def cancel_order(self, id: str, symbol: Str = None, params={}):
         """
@@ -870,13 +895,22 @@ class btcmarkets(Exchange, ImplicitAPI):
         request: dict = {
             'id': id,
         }
-        return await self.privateDeleteOrdersId(self.extend(request, params))
+        response = await self.privateDeleteOrdersId(self.extend(request, params))
+        #
+        #    {
+        #        "orderId": "7524",
+        #        "clientOrderId": "123-456"
+        #    }
+        #
+        return self.parse_order(response)
 
     def calculate_fee(self, symbol, type, side, amount, price, takerOrMaker='taker', params={}):
         """
         calculates the presumptive fee that would be charged for an order
         :param str symbol: unified market symbol
-        :param str type: not used by btcmarkets.calculate_fee        :param string side: not used by btcmarkets.calculate_fee        :param float amount: how much you want to trade, in units of the base currency on most exchanges, or number of contracts
+        :param str type: not used by btcmarkets.calculateFee
+        :param str side: not used by btcmarkets.calculateFee
+        :param float amount: how much you want to trade, in units of the base currency on most exchanges, or number of contracts
         :param float price: the price for the order to be filled at, in units of the quote currency
         :param str takerOrMaker: 'taker' or 'maker'
         :param dict params:
@@ -915,7 +949,7 @@ class btcmarkets(Exchange, ImplicitAPI):
         }
         return self.safe_string(statuses, status, status)
 
-    def parse_order(self, order, market: Market = None) -> Order:
+    def parse_order(self, order: dict, market: Market = None) -> Order:
         #
         # createOrder
         #
@@ -1170,21 +1204,19 @@ class btcmarkets(Exchange, ImplicitAPI):
         url = self.urls['api'][api] + request
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 
-    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
+    def handle_errors(self, code: int, reason: str, url: str, method: str, headers: dict, body: str, response, requestHeaders, requestBody):
         if response is None:
             return None  # fallback to default error handler
-        if 'success' in response:
-            if not response['success']:
-                error = self.safe_string(response, 'errorCode')
-                feedback = self.id + ' ' + body
-                self.throw_exactly_matched_exception(self.exceptions, error, feedback)
-                raise ExchangeError(feedback)
-        # v3 api errors
-        if code >= 400:
-            errorCode = self.safe_string(response, 'code')
-            message = self.safe_string(response, 'message')
+        #
+        #     {"code":"UnAuthorized","message":"invalid access token"}
+        #     {"code":"MarketNotFound","message":"invalid marketId"}
+        #
+        errorCode = self.safe_string(response, 'code')
+        message = self.safe_string(response, 'message')
+        if errorCode is not None:
             feedback = self.id + ' ' + body
-            self.throw_exactly_matched_exception(self.exceptions, errorCode, feedback)
-            self.throw_exactly_matched_exception(self.exceptions, message, feedback)
-            raise ExchangeError(feedback)
+            self.throw_exactly_matched_exception(self.exceptions['exact'], message, feedback)
+            self.throw_exactly_matched_exception(self.exceptions['exact'], errorCode, feedback)
+            self.throw_broadly_matched_exception(self.exceptions['broad'], message, feedback)
+            raise ExchangeError(feedback)  # unknown message
         return None
